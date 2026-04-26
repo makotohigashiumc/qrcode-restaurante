@@ -1,3 +1,4 @@
+import threading
 from flask import Blueprint, request, jsonify, current_app
 from app.services.auth_service import hash_senha, verificar_senha, gerar_token, requer_auth, _gerar_token_url
 from app.services.viacep_service import buscar_cep
@@ -10,9 +11,17 @@ from app.database import execute_write
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
 
+def _enviar_email_bg(app, email, nome, token):
+    """Envia e-mail em background sem bloquear a resposta HTTP."""
+    with app.app_context():
+        try:
+            enviar_verificacao(email, nome, token)
+        except Exception as e:
+            app.logger.warning(f"Falha ao enviar e-mail de verificação: {e}")
+
+
 @admin_bp.post("/login")
 def login():
-    """POST /api/admin/login — autentica e retorna JWT."""
     data  = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
     senha = data.get("senha", "")
@@ -24,7 +33,6 @@ def login():
     if not restaurante or not verificar_senha(senha, restaurante["senha_hash"]):
         return jsonify({"erro": "Credenciais inválidas"}), 401
 
-    # RF02: bloqueia login se e-mail não verificado
     if not restaurante.get("email_verificado", True):
         return jsonify({
             "erro": "E-mail não confirmado.",
@@ -45,7 +53,6 @@ def login():
 
 @admin_bp.post("/registro")
 def registro():
-    """POST /api/admin/registro — cria novo restaurante."""
     data   = request.get_json(silent=True) or {}
     campos = ["nome", "email", "senha", "telefone", "cep"]
     for c in campos:
@@ -59,8 +66,7 @@ def registro():
     addr   = buscar_cep(data["cep"]) or {}
     hashed = hash_senha(data["senha"])
 
-    # Token de verificação de e-mail (RF02)
-    token_verif = _gerar_token_url()
+    token_verif  = _gerar_token_url()
     expira_verif = datetime.now(timezone.utc) + timedelta(hours=24)
 
     novo = repo.criar(
@@ -75,13 +81,11 @@ def registro():
         bairro=addr.get("bairro", data.get("bairro", "")),
     )
 
-    # Salva token de verificação no banco
     execute_write(
         "UPDATE restaurantes SET token_verificacao=%s, token_verif_expira=%s WHERE id=%s",
         (token_verif, expira_verif, str(novo["id"]))
     )
 
-    # Categorias padrão
     defaults = [("Entradas", 1), ("Pratos Principais", 2), ("Sobremesas", 3), ("Bebidas", 4)]
     for nome_cat, ordem in defaults:
         try:
@@ -89,11 +93,11 @@ def registro():
         except Exception:
             pass
 
-    # Envia e-mail de verificação (RF02)
-    try:
-        enviar_verificacao(email, data["nome"], token_verif)
-    except Exception as e:
-        current_app.logger.warning(f"Falha ao enviar e-mail de verificação: {e}")
+    # Envia e-mail em background — resposta volta imediatamente
+    app = current_app._get_current_object()
+    t = threading.Thread(target=_enviar_email_bg, args=(app, email, data["nome"], token_verif))
+    t.daemon = True
+    t.start()
 
     return jsonify({
         "mensagem": "Cadastro realizado! Verifique seu e-mail para ativar a conta.",

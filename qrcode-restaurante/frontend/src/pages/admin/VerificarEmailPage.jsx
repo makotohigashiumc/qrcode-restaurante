@@ -2,19 +2,33 @@
 // Cole em: frontend/src/pages/admin/VerificarEmailPage.jsx
 // Rota: /verificar-email/:token
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 
 export default function VerificarEmailPage() {
-  const { token } = useParams()
-  const [status, setStatus] = useState('loading') // loading | ok | erro
+  const { token }   = useParams()
+  const [status, setStatus] = useState('loading')
   const [msg, setMsg]       = useState('')
+  const chamado = useRef(false) // evita dupla requisição
 
   useEffect(() => {
+    if (chamado.current) return
+    chamado.current = true
+
     fetch(`/api/verificar-email/${token}`)
       .then(r => r.json().then(d => ({ ok: r.ok, ...d })))
-      .then(d => { setStatus(d.ok ? 'ok' : 'erro'); setMsg(d.mensagem || d.erro || '') })
-      .catch(() => { setStatus('erro'); setMsg('Erro de conexão.') })
+      .then(d => {
+        if (d.ok) {
+          setStatus('ok')
+          setMsg(d.mensagem || 'E-mail confirmado com sucesso!')
+        } else {
+          // Token inválido pode significar que já foi confirmado antes
+          const jaConfirmado = (d.mensagem || d.erro || '').toLowerCase().includes('já confirmado')
+          setStatus(jaConfirmado ? 'ok' : 'erro')
+          setMsg(jaConfirmado ? 'E-mail já confirmado! Você pode fazer login.' : (d.erro || 'Link inválido ou expirado.'))
+        }
+      })
+      .catch(() => { setStatus('erro'); setMsg('Erro de conexão. Tente novamente.') })
   }, [token])
 
   return (
@@ -25,7 +39,9 @@ export default function VerificarEmailPage() {
           {status === 'loading' ? '⏳' : status === 'ok' ? '✓' : '✕'}
         </div>
         <h1 className="font-display text-[22px] text-espresso mb-3">
-          {status === 'loading' ? 'Verificando...' : status === 'ok' ? 'E-mail confirmado!' : 'Link inválido'}
+          {status === 'loading' ? 'Verificando...'
+            : status === 'ok'  ? 'E-mail confirmado!'
+            : 'Link inválido'}
         </h1>
         <p className="text-[13px] text-espresso-4 mb-6">{msg}</p>
         {status === 'ok' && (
@@ -35,9 +51,11 @@ export default function VerificarEmailPage() {
           </Link>
         )}
         {status === 'erro' && (
-          <Link to="/admin/login" className="text-[13px] text-brand-500 hover:underline">
-            ← Voltar ao login
-          </Link>
+          <div className="space-y-3">
+            <Link to="/admin/login" className="block text-[13px] text-brand-500 hover:underline">
+              ← Voltar ao login
+            </Link>
+          </div>
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@ import os
 import jwt
 import bcrypt
 import secrets
+import threading
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
@@ -11,12 +12,10 @@ from app.database import execute_query, execute_write
 
 auth_rf_bp = Blueprint("auth_rf", __name__)
 
-JWT_SECRET  = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
-JWT_ALGO    = "HS256"
+JWT_SECRET    = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+JWT_ALGO      = "HS256"
 JWT_EXP_HOURS = 8
 
-
-# ── Helpers de auth já existentes no projeto ────────────────
 
 def hash_senha(senha: str) -> str:
     return bcrypt.hashpw(senha.encode(), bcrypt.gensalt(12)).decode()
@@ -66,6 +65,19 @@ def _gerar_token_url() -> str:
     return secrets.token_urlsafe(32)
 
 
+def _enviar_bg(app, fn, *args):
+    """Executa função de e-mail em background sem bloquear a resposta HTTP."""
+    def run():
+        with app.app_context():
+            try:
+                fn(*args)
+            except Exception as e:
+                app.logger.warning(f"Falha ao enviar e-mail em background: {e}")
+    t = threading.Thread(target=run)
+    t.daemon = True
+    t.start()
+
+
 # ── RF02: Confirmar e-mail ───────────────────────────────────
 
 @auth_rf_bp.route("/api/verificar-email/<token>", methods=["GET"])
@@ -76,14 +88,11 @@ def verificar_email(token: str):
     )
     if not row:
         return jsonify({"erro": "Token inválido ou já utilizado."}), 400
-
     if row["email_verificado"]:
         return jsonify({"mensagem": "E-mail já confirmado."}), 200
-
     expira = row["token_verif_expira"]
     if expira and expira < datetime.now(timezone.utc):
         return jsonify({"erro": "Link expirado. Solicite um novo."}), 410
-
     execute_write(
         "UPDATE restaurantes SET email_verificado=TRUE, token_verificacao=NULL, token_verif_expira=NULL WHERE id=%s",
         (row["id"],)
@@ -101,7 +110,6 @@ def reenviar_verificacao():
         return jsonify({"erro": "Informe o e-mail."}), 400
 
     RESP = {"mensagem": "Se cadastrado e não confirmado, um novo link foi enviado."}
-
     row = execute_query(
         "SELECT id, nome, email_verificado FROM restaurantes WHERE email=%s LIMIT 1",
         (email,), fetchone=True
@@ -115,10 +123,9 @@ def reenviar_verificacao():
         "UPDATE restaurantes SET token_verificacao=%s, token_verif_expira=%s WHERE id=%s",
         (token, expira, row["id"])
     )
-    try:
-        enviar_verificacao(email, row["nome"], token)
-    except Exception as e:
-        current_app.logger.warning(f"Falha ao enviar e-mail: {e}")
+
+    app = current_app._get_current_object()
+    _enviar_bg(app, enviar_verificacao, email, row["nome"], token)
 
     return jsonify(RESP), 200
 
@@ -141,12 +148,10 @@ def esqueci_senha():
     if not row:
         return jsonify(RESP), 200
 
-    # Invalida tokens anteriores
     execute_write(
         "UPDATE tokens_recuperacao SET usado=TRUE WHERE restaurante_id=%s",
         (row["id"],)
     )
-
     token  = _gerar_token_url()
     expira = datetime.now(timezone.utc) + timedelta(hours=1)
     execute_write(
@@ -154,16 +159,14 @@ def esqueci_senha():
         (row["id"], token, expira)
     )
 
-    try:
-        enviar_recuperacao(email, row["nome"], token)
-    except Exception as e:
-        current_app.logger.error(f"Falha ao enviar e-mail de recuperação: {e}")
-        return jsonify({"erro": "Falha ao enviar e-mail. Tente novamente."}), 500
+    # Envia em background — resposta volta imediatamente
+    app = current_app._get_current_object()
+    _enviar_bg(app, enviar_recuperacao, email, row["nome"], token)
 
     return jsonify(RESP), 200
 
 
-# ── RF05: Validar token de recuperação ──────────────────────
+# ── RF05: Validar token ──────────────────────────────────────
 
 @auth_rf_bp.route("/api/validar-token-recuperacao/<token>", methods=["GET"])
 def validar_token_recuperacao(token: str):
@@ -203,12 +206,7 @@ def nova_senha():
         return jsonify({"erro": "Token expirado."}), 410
 
     nova_hash = bcrypt.hashpw(nova_sen.encode(), bcrypt.gensalt()).decode()
-    execute_write(
-        "UPDATE restaurantes SET senha_hash=%s WHERE id=%s",
-        (nova_hash, row["restaurante_id"])
-    )
-    execute_write(
-        "UPDATE tokens_recuperacao SET usado=TRUE WHERE id=%s",
-        (row["id"],)
-    )
+    execute_write("UPDATE restaurantes SET senha_hash=%s WHERE id=%s", (nova_hash, row["restaurante_id"]))
+    execute_write("UPDATE tokens_recuperacao SET usado=TRUE WHERE id=%s", (row["id"],))
+
     return jsonify({"mensagem": "Senha redefinida! Faça login."}), 200
