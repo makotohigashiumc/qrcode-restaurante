@@ -6,238 +6,187 @@ import api from '../../services/api'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
-const STATUS_LABELS = {
-  recebido:   { label: 'Recebido',    cor: 'bg-blue-100 text-blue-800' },
-  em_preparo: { label: 'Em Preparo',  cor: 'bg-yellow-100 text-yellow-800' },
-  pronto:     { label: 'Pronto',      cor: 'bg-green-100 text-green-800' },
-  entregue:   { label: 'Entregue',    cor: 'bg-gray-100 text-gray-500' },
-  cancelado:  { label: 'Cancelado',   cor: 'bg-red-100 text-red-700' },
+const STATUS = {
+  recebido:   { label: 'Recebido',   cls: 'bg-blue-50 text-blue-700',   border: 'border-l-blue-400' },
+  em_preparo: { label: 'Em preparo', cls: 'bg-amber-50 text-amber-700',  border: 'border-l-amber-400' },
+  pronto:     { label: 'Pronto',     cls: 'bg-indigo-50 text-indigo-700',border: 'border-l-indigo-400' },
+  entregue:   { label: 'Entregue',   cls: 'bg-green-50 text-green-700',  border: 'border-l-gray-300' },
+  cancelado:  { label: 'Cancelado',  cls: 'bg-red-50 text-red-600',      border: 'border-l-red-300' },
 }
+const PROXIMO = { recebido: 'em_preparo', em_preparo: 'pronto', pronto: 'entregue' }
+const PROXIMO_LABEL = { recebido: 'Iniciar', em_preparo: 'Pronto', pronto: 'Entregar' }
 
-const PROXIMOS = {
-  recebido: 'em_preparo',
-  em_preparo: 'pronto',
-  pronto: 'entregue',
-}
-
-function formatCurrency(v) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
-}
-function formatTime(iso) {
-  if (!iso) return ''
-  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
+const fmt = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
+const fmtTime = iso => iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
 
 export default function PedidosAdminPage() {
   const qc = useQueryClient()
-  const [filtro, setFiltro] = useState('todos')
+  const [filtro, setFiltro]   = useState('todos')
   const [detalhe, setDetalhe] = useState(null)
 
   const { data: pedidos = [], isLoading, isError, error, refetch } = useQuery(
     ['pedidos', filtro],
-    () => {
-      const params = filtro !== 'todos' ? `?status=${filtro}` : ''
-      return api.get(`/api/pedidos${params}`).then(r => r.data)
-    },
+    () => api.get(`/api/pedidos${filtro !== 'todos' ? `?status=${filtro}` : ''}`).then(r => r.data),
     { refetchInterval: 20000 }
   )
 
-  // WebSocket para atualizações em tempo real
   useEffect(() => {
     const s = io(API_URL, { transports: ['polling'] })
-    let restauranteId = null
     try {
       const token = localStorage.getItem('token') || ''
-      const part = token.split('.')[1] || ''
-      const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
-      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
-      restauranteId = JSON.parse(atob(padded || 'e30='))?.sub
-    } catch {
-      restauranteId = null
-    }
-    if (restauranteId) {
-      s.on('connect', () => s.emit('entrar_sala', { restaurante_id: restauranteId }))
-      s.on('novo_pedido', () => { refetch(); toast('🔔 Novo pedido recebido!', { icon: '🆕' }) })
-      s.on('status_atualizado', () => refetch())
-    }
+      const part  = token.split('.')[1] || ''
+      const base64 = part.replace(/-/g,'+').replace(/_/g,'/')
+      const id = JSON.parse(atob(base64 + '='.repeat((4 - base64.length % 4) % 4) || 'e30='))?.sub
+      if (id) {
+        s.on('connect', () => s.emit('entrar_sala', { restaurante_id: id }))
+        s.on('novo_pedido',       () => { refetch(); toast('Novo pedido recebido!') })
+        s.on('status_atualizado', () => refetch())
+      }
+    } catch {}
     return () => s.disconnect()
   }, [])
 
-  const atualizarStatus = useMutation(async ({ id, status }) => {
-    await api.patch(`/api/pedidos/${id}/status`, { status })
-  }, {
-    onSuccess: () => { qc.invalidateQueries('pedidos'); toast.success('Status atualizado') },
-    onError: () => toast.error('Erro ao atualizar status'),
-  })
+  const atualizarStatus = useMutation(
+    ({ id, status }) => api.patch(`/api/pedidos/${id}/status`, { status }),
+    { onSuccess: () => { qc.invalidateQueries('pedidos'); toast.success('Status atualizado') },
+      onError:   () => toast.error('Erro ao atualizar status') }
+  )
 
-  const cancelar = async (id) => {
+  const cancelar = id => {
     if (!confirm('Cancelar este pedido?')) return
     atualizarStatus.mutate({ id, status: 'cancelado' })
   }
 
-  const filtros = [
-    { key: 'todos', label: 'Todos' },
-    { key: 'recebido', label: '🔵 Recebidos' },
-    { key: 'em_preparo', label: '🟡 Em Preparo' },
-    { key: 'pronto', label: '🟢 Prontos' },
-    { key: 'entregue', label: '✅ Entregues' },
-    { key: 'cancelado', label: '❌ Cancelados' },
+  const FILTROS = [
+    { key: 'todos',      label: 'Todos' },
+    { key: 'recebido',   label: 'Recebidos' },
+    { key: 'em_preparo', label: 'Em preparo' },
+    { key: 'pronto',     label: 'Prontos' },
+    { key: 'entregue',   label: 'Entregues' },
+    { key: 'cancelado',  label: 'Cancelados' },
   ]
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-7 max-w-5xl mx-auto">
+
+      {/* Cabeçalho */}
+      <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">🧾 Pedidos</h1>
-          <p className="text-sm text-gray-500">{pedidos.length} pedido(s)</p>
+          <h1 className="font-display text-[22px] text-espresso">Pedidos</h1>
+          <p className="text-[12px] text-espresso-4">{pedidos.length} pedido(s)</p>
         </div>
-        <button onClick={() => refetch()} className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-          🔄 Atualizar
+        <button onClick={() => refetch()} className="text-[12px] text-espresso-4 hover:text-espresso transition-colors">
+          Atualizar
         </button>
       </div>
 
       {isError && (
-        <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 border border-gray-100">
-          <p className="font-semibold text-gray-900">
-            {error?.response?.status === 503
-              ? 'Banco indisponível'
-              : !error?.response
-                ? 'Servidor offline'
-                : 'Erro ao carregar pedidos'}
+        <div className="bg-white border border-creme-4 rounded-xl p-4 mb-4">
+          <p className="text-[13px] font-medium text-espresso">
+            {error?.response?.status === 503 ? 'Banco indisponível' : !error?.response ? 'Servidor offline' : 'Erro ao carregar pedidos'}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
-            {error?.response?.status === 503
-              ? 'Tente novamente em alguns segundos.'
-              : !error?.response
-                ? 'Verifique se o backend está rodando.'
-                : 'Não foi possível buscar os pedidos.'}
-          </p>
-          <button
-            onClick={() => refetch()}
-            className="mt-3 bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-700"
-          >
-            🔄 Tentar novamente
-          </button>
+          <button onClick={() => refetch()} className="mt-1 text-[12px] text-brand-500 hover:underline">Tentar novamente</button>
         </div>
       )}
 
       {/* Filtros */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {filtros.map(f => (
-          <button key={f.key} onClick={() => setFiltro(f.key)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors
-              ${filtro === f.key ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+      <div className="flex gap-1.5 mb-5 flex-wrap">
+        {FILTROS.map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFiltro(f.key)}
+            className={`px-3.5 py-1.5 rounded-full text-[12px] font-medium transition-colors
+              ${filtro === f.key ? 'bg-espresso text-creme-3' : 'bg-white border border-creme-4 text-espresso-4 hover:border-espresso-4'}`}
+          >
             {f.label}
           </button>
         ))}
       </div>
 
+      {/* Lista */}
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-600" />
+          <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
         </div>
       ) : (
-        <div className="space-y-3">
-          {pedidos.map(pedido => {
-            const cfg = STATUS_LABELS[pedido.status] || STATUS_LABELS.recebido
-            const proximo = PROXIMOS[pedido.status]
+        <div className="space-y-2">
+          {pedidos.map(p => {
+            const cfg     = STATUS[p.status] || STATUS.recebido
+            const proximo = PROXIMO[p.status]
             return (
-              <div key={pedido.id}
-                className={`bg-white rounded-2xl shadow-sm border-l-4 overflow-hidden
-                  ${pedido.status === 'recebido' ? 'border-blue-500' :
-                    pedido.status === 'em_preparo' ? 'border-yellow-500' :
-                    pedido.status === 'pronto' ? 'border-green-500' :
-                    pedido.status === 'entregue' ? 'border-gray-300' : 'border-red-400'}`}
-              >
-                <div className="p-4 flex items-center gap-4">
-                  {/* Info principal */}
+              <div key={p.id} className={`bg-white border-l-4 border border-creme-4 rounded-xl overflow-hidden ${cfg.border}`}>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-lg bg-creme-2 flex items-center justify-center text-[11px] font-medium text-espresso-4 flex-shrink-0">
+                    M{p.mesa_numero}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="font-bold text-gray-900">Mesa #{pedido.mesa_numero}</span>
-                      {pedido.nome_cliente && (
-                        <span className="text-sm text-gray-500">👤 {pedido.nome_cliente}</span>
-                      )}
-                      <span className="text-xs text-gray-400">🕐 {formatTime(pedido.criado_em)}</span>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[13px] font-medium text-espresso">{p.nome_cliente}</span>
+                      <span className="text-[11px] text-espresso-4">{fmtTime(p.criado_em)}</span>
                     </div>
-
-                    {/* Itens resumidos */}
                     <div className="flex flex-wrap gap-1">
-                      {(pedido.itens || []).map((it, i) => (
-                        <span key={i} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                      {(p.itens || []).map((it, i) => (
+                        <span key={i} className="text-[10px] bg-creme-2 text-espresso-4 px-2 py-0.5 rounded-full">
                           {it.quantidade}× {it.item_nome || it.nome}
                         </span>
                       ))}
                     </div>
                   </div>
-
-                  {/* Valor */}
-                  <div className="text-right">
-                    <p className="font-bold text-brand-600">{formatCurrency(pedido.total)}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cfg.cor}`}>
-                      {cfg.label}
-                    </span>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-[14px] font-medium text-espresso">{fmt(p.total)}</p>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.cls}`}>{cfg.label}</span>
                   </div>
-
-                  {/* Ações */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 flex-shrink-0">
                     <button
-                      onClick={() => setDetalhe(detalhe?.id === pedido.id ? null : pedido)}
-                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg transition-colors"
+                      onClick={() => setDetalhe(detalhe?.id === p.id ? null : p)}
+                      className="text-[11px] bg-creme-2 hover:bg-creme-3 text-espresso-4 px-2.5 py-1.5 rounded-lg transition-colors"
                     >
-                      {detalhe?.id === pedido.id ? '▲ Fechar' : '▼ Detalhes'}
+                      {detalhe?.id === p.id ? 'Fechar' : 'Detalhes'}
                     </button>
-
                     {proximo && (
                       <button
-                        onClick={() => atualizarStatus.mutate({ id: pedido.id, status: proximo })}
-                        className={`text-xs text-white px-3 py-1.5 rounded-lg transition-colors font-medium
-                          ${pedido.status === 'recebido' ? 'bg-blue-600 hover:bg-blue-700' :
-                            pedido.status === 'em_preparo' ? 'bg-yellow-500 hover:bg-yellow-600' :
-                            'bg-green-600 hover:bg-green-700'}`}
+                        onClick={() => atualizarStatus.mutate({ id: p.id, status: proximo })}
+                        className="text-[11px] bg-brand-500 hover:bg-brand-600 text-white px-2.5 py-1.5 rounded-lg transition-colors font-medium"
                       >
-                        {pedido.status === 'recebido' ? '▶ Iniciar' :
-                         pedido.status === 'em_preparo' ? '✓ Pronto' : '🚀 Entregar'}
+                        {PROXIMO_LABEL[p.status]}
                       </button>
                     )}
-
-                    {!['cancelado', 'entregue'].includes(pedido.status) && (
-                      <button onClick={() => cancelar(pedido.id)}
-                        className="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg transition-colors">
+                    {!['cancelado','entregue'].includes(p.status) && (
+                      <button
+                        onClick={() => cancelar(p.id)}
+                        className="text-[11px] text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-lg transition-colors"
+                      >
                         ✕
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* Detalhe expandido */}
-                {detalhe?.id === pedido.id && (
-                  <div className="border-t bg-gray-50 px-5 py-4">
-                    <table className="w-full text-sm">
+                {detalhe?.id === p.id && (
+                  <div className="border-t border-creme-3 bg-creme px-5 py-4">
+                    <table className="w-full text-[12px]">
                       <thead>
-                        <tr className="text-gray-500 text-xs uppercase">
+                        <tr className="text-espresso-4 text-[10px] uppercase">
                           <th className="text-left pb-2">Item</th>
                           <th className="text-center pb-2">Qtd</th>
                           <th className="text-right pb-2">Unit.</th>
                           <th className="text-right pb-2">Subtotal</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {(pedido.itens || []).map((it, i) => (
+                      <tbody className="divide-y divide-creme-3">
+                        {(p.itens || []).map((it, i) => (
                           <tr key={i}>
-                            <td className="py-1.5">
-                              <p className="font-medium">{it.item_nome || it.nome}</p>
-                              {it.observacao && <p className="text-xs text-gray-400">{it.observacao}</p>}
-                            </td>
-                            <td className="text-center py-1.5">{it.quantidade}</td>
-                            <td className="text-right py-1.5">{formatCurrency(it.preco_unitario)}</td>
-                            <td className="text-right py-1.5 font-medium">{formatCurrency(it.preco_unitario * it.quantidade)}</td>
+                            <td className="py-1.5 font-medium text-espresso">{it.item_nome || it.nome}</td>
+                            <td className="py-1.5 text-center text-espresso-4">{it.quantidade}</td>
+                            <td className="py-1.5 text-right text-espresso-4">{fmt(it.preco_unitario)}</td>
+                            <td className="py-1.5 text-right font-medium text-espresso">{fmt(it.preco_unitario * it.quantidade)}</td>
                           </tr>
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="border-t font-bold">
-                          <td colSpan={3} className="pt-2 text-right">Total</td>
-                          <td className="pt-2 text-right text-brand-600">{formatCurrency(pedido.total)}</td>
+                        <tr className="border-t border-creme-3 font-medium">
+                          <td colSpan={3} className="pt-2 text-right text-espresso-4">Total</td>
+                          <td className="pt-2 text-right text-brand-500">{fmt(p.total)}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -246,11 +195,9 @@ export default function PedidosAdminPage() {
               </div>
             )
           })}
-
           {pedidos.length === 0 && (
-            <div className="text-center py-20 text-gray-400">
-              <div className="text-5xl mb-3">🧾</div>
-              <p>Nenhum pedido encontrado</p>
+            <div className="text-center py-16 text-espresso-4 text-[13px]">
+              Nenhum pedido encontrado.
             </div>
           )}
         </div>
