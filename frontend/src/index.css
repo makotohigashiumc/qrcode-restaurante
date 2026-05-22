@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;600;700&family=Outfit:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { background-color: #F5F0EB; }
+  body { font-family: 'Outfit', sans-serif; background-color: #F5F0EB; color: #1A1410; }
+  * { box-sizing: border-box; }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Noto Serif JP', Georgia, serif; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  .border-half { border-width: 0.5px; }
+  .tracking-wider-jp { letter-spacing: 0.18em; }
+  .tracking-widest-jp { letter-spacing: 0.28em; }
+}
