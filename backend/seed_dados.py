@@ -4,12 +4,12 @@ Mínimo 1000 registros nas tabelas principais (pedidos e itens_pedido)
 
 Execução:
   cd backend
-  .\venv\Scripts\Activate.ps1   (Windows)
+  .\\venv\\Scripts\\Activate.ps1   (Windows)
   python seed_dados.py
 
 Tabelas e volumes gerados:
-  mesas          →  30 registros
-  categorias     →   4 registros (padrão)
+  mesas          →  20 registros
+  categorias     →   5 registros
   itens_cardapio →  50 registros
   pedidos        → 1200 registros  (distribuídos em 90 dias)
   itens_pedido   → ~3600 registros (média 3 por pedido)
@@ -23,93 +23,93 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from app.database import execute_query, execute_write
 
-# ── Configuração ─────────────────────────────────────────────
-RESTAURANTE_EMAIL = "makotomatias3@gmail.com"   # ajuste se necessário
-TOTAL_PEDIDOS     = 1200                         # quantidade de pedidos a criar
-DIAS_HISTORICO    = 90                           # dias de histórico
+RESTAURANTE_EMAIL = "makotomatias3@gmail.com"
+TOTAL_PEDIDOS     = 1200
+DIAS_HISTORICO    = 90
 
-# ── Dados mock ───────────────────────────────────────────────
 NOMES = [
-    "Ana Silva","Bruno Costa","Carla Souza","Daniel Lima","Eduarda Rocha",
-    "Felipe Martins","Gabriela Ferreira","Henrique Alves","Isabela Nunes",
-    "João Pereira","Karina Melo","Lucas Barbosa","Mariana Cardoso",
-    "Nicolas Rodrigues","Olivia Santos","Pedro Oliveira","Quitéria Lopes",
-    "Rafael Gomes","Sofia Mendes","Thiago Castro","Ursula Freitas",
-    "Vinicius Ramos","Wanderley Araújo","Ximena Cavalcanti","Yasmin Teixeira",
-    "Zeca Moura","Alice Pinto","Bernardo Correia","Clara Monteiro",
-    "Diego Nascimento","Elena Batista","Fábio Rezende","Giovanna Dias",
-    "Hugo Carvalho","Ingrid Cunha","Julio Azevedo","Kelly Moreira",
-    "Leonardo Vieira","Melissa Campos","Natan Ribeiro","Odalys Fernandes",
-    "Patricia Duarte","Quentin Farias","Ricardo Andrade","Sabrina Moraes",
-    "Tiago Nogueira","Valentina Cruz","Wesley Borges","Xenia Torres","Yago Lima",
+    "Ana Silva", "Bruno Costa", "Carla Souza", "Daniel Lima", "Eduarda Rocha",
+    "Felipe Martins", "Gabriela Ferreira", "Henrique Alves", "Isabela Nunes",
+    "João Pereira", "Karina Melo", "Lucas Barbosa", "Mariana Cardoso",
+    "Nicolas Rodrigues", "Olivia Santos", "Pedro Oliveira", "Rafael Gomes",
+    "Sofia Mendes", "Thiago Castro", "Vinicius Ramos", "Yasmin Teixeira",
+    "Alice Pinto", "Bernardo Correia", "Clara Monteiro", "Diego Nascimento",
+    "Elena Batista", "Giovanna Dias", "Hugo Carvalho", "Ingrid Cunha",
+    "Julio Azevedo", "Kelly Moreira", "Leonardo Vieira", "Melissa Campos",
+    "Natan Ribeiro", "Patricia Duarte", "Ricardo Andrade", "Sabrina Moraes",
+    "Tiago Nogueira", "Valentina Cruz", "Wesley Borges",
 ]
 
 CARDAPIO = {
     "Entradas": [
-        ("Bruschetta ao Alho",     "Pão gralhado com alho, tomate e manjericão",           18.90),
-        ("Crostini de Cogumelos",  "Torradas com cogumelos salteados e parmesão",          22.50),
-        ("Carpaccio de Atum",      "Finas fatias de atum com alcaparras e limão",           38.00),
-        ("Bolinho de Bacalhau",    "6 unidades crocantes com ervas finas",                 32.50),
-        ("Bruschetta Clássica",    "Pão gralhado com tomate e azeite",                     22.90),
-        ("Camarão ao Alho",        "Camarões salteados com alho e pimenta",                45.00),
-        ("Tábua de Frios",         "Embutidos, queijos e acompanhamentos",                 55.00),
-        ("Ceviche de Tilápia",     "Tilápia marinada com cebola roxa e coentro",           34.90),
-        ("Provolone Grelhado",     "Queijo provolone com azeite e orégano",                28.90),
-        ("Pão de Queijo Artesanal","6 unidades com queijo mineiro",                        16.90),
-        ("Carpaccio de Carne",     "Finas fatias com rúcula, parmesão e limão",            38.00),
-        ("Rabada Crocante",        "Rabada desfiada frita com molho barbecue",             36.90),
+        ("Edamame",            "Vagem de soja cozida com sal grosso",                        12.90),
+        ("Guioza (6 un.)",     "Pastel japonês grelhado recheado com carne e cebolinha",      28.90),
+        ("Sunomono",           "Salada de pepino com molho ponzu e gergelim",                 18.90),
+        ("Agedashi Tofu",      "Tofu frito em caldo dashi com cebolinha",                     22.90),
+        ("Harumaki (4 un.)",   "Rolinho primavera crocante com recheio de legumes",           24.90),
+        ("Ceviche Nikkei",     "Peixe branco marinado com limão, shoyu e pimenta",            38.00),
+        ("Camarão Tempurá",    "Camarões empanados em massa leve com molho tentsuyu",         42.00),
+        ("Yasai Salada",       "Mix de folhas com molho missô e gergelim torrado",            21.90),
     ],
     "Pratos Principais": [
-        ("Filé ao Molho Madeira",  "Filé mignon com molho madeira, arroz e batata",        68.90),
-        ("Frango à Parmegiana",    "Frango empanado com molho de tomate e mussarela",      52.90),
-        ("Salmão Grelhado",        "Salmão com crosta de ervas e purê",                    76.50),
-        ("Risoto de Camarão",      "Arroz arbóreo com camarões e limão",                   72.00),
-        ("Massa ao Funghi",        "Tagliatelle com cogumelos porcini",                    58.00),
-        ("Picanha na Chapa",       "400g com chimichurri, arroz e farofa",                 89.90),
-        ("Bacalhau à Brás",        "Bacalhau desfiado com batata-palha e ovos",            78.00),
-        ("Nhoque ao Sugo",         "Nhoque de batata com molho de tomate fresco",          46.90),
-        ("Medalhão Suíno",         "Medalhão com redução de vinho e legumes",              62.90),
-        ("Moqueca de Peixe",       "Peixe com dendê, leite de coco e pimentões",          71.00),
-        ("Costela Assada",         "Costela bovina assada lentamente com mandioca",        87.90),
-        ("Frango na Chapa",        "Peito grelhado com legumes e arroz integral",          48.90),
-        ("Penne ao Pesto",         "Macarrão com molho pesto e tomate-cereja",             46.00),
+        ("Salmão Teriyaki",    "Filé de salmão grelhado com molho teriyaki e arroz gohan",   68.90),
+        ("Frango Karaage",     "Frango frito crocante estilo japonês com maionese kewpie",    52.90),
+        ("Tonkatsu",           "Lombo de porco empanado com molho tonkatsu e coleslaw",       54.90),
+        ("Gyudon",             "Bowl de arroz com carne bovina fatiada e cebola caramelizada",56.90),
+        ("Yakisoba de Frango", "Macarrão soba salteado com frango e legumes",                 48.90),
+        ("Katsudon",           "Bowl de arroz com tonkatsu, ovo e cebola",                    58.90),
+        ("Hambúrguer Wagyu",   "Hambúrguer de wagyu com queijo, teriyaki e batata frita",    78.90),
+        ("Tempurá Misto",      "Mix de camarão e legumes empanados com caldo tentsuyu",       62.90),
+        ("Udon Nabeyaki",      "Caldo quente com macarrão udon, camarão e ovo",               59.90),
+        ("Tofu Dengaku",       "Tofu grelhado com pasta de missô adocicada e arroz",          46.90),
+        ("Salmão Misoyaki",    "Salmão marinado em pasta de missô, grelhado com arroz",       72.00),
+        ("Oyakodon",           "Bowl de arroz com frango, ovo e cebola em caldo dashi",       49.90),
+    ],
+    "Sushis e Sashimis": [
+        ("Combinado Makoto 20 peças",  "Seleção do chef: niguiris, uramakis e hossomakis",   89.90),
+        ("Sashimi de Salmão (10 un.)", "Fatias frescas de salmão norueguês",                  58.90),
+        ("Niguiri Misto (8 un.)",      "4 de salmão e 4 de atum sobre arroz temperado",       52.90),
+        ("Uramaki Filadélfia (8 un.)", "Salmão, cream cheese e pepino cobertos com gergelim", 38.90),
+        ("Hossomaki Salmão (8 un.)",   "Enrolado fino com salmão",                            28.90),
+        ("Temaki de Salmão",           "Cone de alga com salmão, cream cheese e pepino",       24.90),
+        ("Sashimi de Atum (8 un.)",    "Fatias de atum fresco com wasabi e gengibre",          54.90),
+        ("Uramaki Camarão (8 un.)",    "Camarão, manga e cream cheese, coberto com gergelim", 42.90),
+        ("Niguiri Camarão (4 un.)",    "Camarão sobre base de arroz com wasabi",               32.90),
+        ("Combinado Família 40 peças", "Variedade ampla para grupos",                         165.00),
     ],
     "Sobremesas": [
-        ("Petit Gâteau",           "Bolo quente com sorvete de baunilha",                  28.90),
-        ("Pudim de Leite",         "Pudim cremoso com calda de caramelo",                  18.90),
-        ("Tiramisù",               "Sobremesa italiana com mascarpone e café",             26.00),
-        ("Cheesecake de Frutas",   "Base de biscoito com cream cheese e frutas",           24.90),
-        ("Mousse de Chocolate",    "Mousse aerado com ganache",                            21.90),
-        ("Crème Brûlée",           "Creme francês com casquinha de açúcar",                23.90),
-        ("Sorvete Artesanal",      "3 bolas à escolha com calda e chantilly",              19.90),
-        ("Torta de Limão",         "Massa crocante com creme de limão e merengue",         22.90),
-        ("Brownie com Sorvete",    "Brownie quente com sorvete e calda",                   27.90),
-        ("Panna Cotta",            "Creme italiano com calda de frutas vermelhas",         20.90),
+        ("Mochi de Morango",    "Bolinho de arroz glutinoso recheado com morango e creme",    18.90),
+        ("Mochi de Matcha",     "Bolinho de arroz com recheio de creme de chá verde",         18.90),
+        ("Dorayaki",            "Panqueca japonesa recheada com pasta de feijão azuki",       16.90),
+        ("Pudim de Matcha",     "Pudim cremoso de chá verde com calda de caramelo",           22.90),
+        ("Sorvete Mochi (3 un.)","Sorvete envolvido em massa de mochi, sabores variados",     24.90),
+        ("Taiyaki",             "Biscoito em forma de peixe recheado com creme ou azuki",     14.90),
     ],
     "Bebidas": [
-        ("Água Mineral",           "500ml com ou sem gás",                                  6.00),
-        ("Refrigerante Lata",      "350ml - Coca-Cola, Guaraná ou Sprite",                  7.50),
-        ("Suco Natural",           "300ml - laranja, limão, abacaxi ou manga",             12.90),
-        ("Cerveja Long Neck",      "330ml - Heineken, Stella Artois ou Corona",            14.90),
-        ("Caipirinha",             "Limão ou morango com cachaça ou vodka",                22.90),
-        ("Vinho da Casa (Taça)",   "Tinto ou branco selecionado pelo sommelier",           24.00),
-        ("Chopp Artesanal",        "400ml - Pilsen, IPA ou Weiss",                         18.90),
-        ("Limonada Suíça",         "Limão siciliano, leite condensado e creme",            16.90),
-        ("Chá Gelado",             "500ml - Pêssego ou Limão com hortelã",                  9.90),
-        ("Café Expresso",          "Duplo ou simples",                                      8.90),
-        ("Água de Coco",           "300ml natural gelado",                                  8.90),
-        ("Suco de Acaí",           "300ml com guaraná e mel",                              14.90),
-        ("Cerveja Artesanal",      "600ml - Pilsen, Weiss ou IPA",                         28.90),
+        ("Água Mineral",          "500ml com ou sem gás",                                     6.00),
+        ("Refrigerante Lata",     "350ml — Coca-Cola, Guaraná ou Sprite",                     7.50),
+        ("Suco Natural",          "300ml — laranja, limão ou maracujá",                      12.90),
+        ("Cerveja Long Neck",     "330ml — Sapporo, Kirin ou Asahi",                         16.90),
+        ("Saquê Quente",          "200ml — saquê junmai aquecido",                            28.90),
+        ("Saquê Gelado",          "200ml — saquê nigori gelado",                              26.90),
+        ("Chá Verde Gelado",      "400ml — chá sencha gelado com limão",                     11.90),
+        ("Ramune",                "250ml — refrigerante japonês sabor melão",                 14.90),
+        ("Limonada com Yuzu",     "Limonada artesanal com toque de yuzu",                    18.90),
+        ("Cerveja Japonesa 600ml","Sapporo ou Kirin — garrafa",                              32.90),
     ],
 }
 
 STATUS_DIST = [
-    ("entregue", 60), ("cancelado", 12), ("em_preparo", 12),
-    ("pronto", 8),    ("recebido", 8),
+    ("entregue", 60), ("cancelado", 10), ("em_preparo", 12),
+    ("pronto", 8),    ("recebido", 10),
 ]
 
-OBS = ["","","","","","","Sem cebola","Sem glúten","Bem passado","Al dente",
-       "Sem pimenta","Capricha no molho","Sem lactose","Ponto médio","Extra molho"]
+OBS = [
+    "", "", "", "", "", "",
+    "Sem wasabi", "Molho extra", "Sem gengibre", "Bem passado",
+    "Sem glúten", "Sem lactose", "Pimenta à parte", "Extra molho teriyaki",
+    "Arroz sem tempero",
+]
 
 
 def rand_status():
@@ -121,49 +121,40 @@ def rand_data():
     d = random.randint(0, DIAS_HISTORICO)
     h = random.randint(11, 22)
     m = random.randint(0, 59)
-    return datetime.now(timezone.utc) - timedelta(days=d, hours=23-h, minutes=59-m)
+    return datetime.now(timezone.utc) - timedelta(days=d, hours=23 - h, minutes=59 - m)
 
 
 def main():
     print("=" * 55)
-    print("  seed_dados.py — qrcode-restaurante")
+    print("  seed_dados.py — Makoto Restaurante Japonês")
     print("=" * 55)
 
-    # 1. Busca restaurante
     rest = execute_query(
         "SELECT id, nome FROM restaurantes WHERE email = %s LIMIT 1",
         (RESTAURANTE_EMAIL,), fetchone=True
     )
     if not rest:
-        print(f"\nErro: restaurante '{RESTAURANTE_EMAIL}' nao encontrado.")
-        print("Cadastre o restaurante primeiro e ajuste RESTAURANTE_EMAIL.")
-        sys.exit(1)
+        print(f"\nErro: restaurante '{RESTAURANTE_EMAIL}' não encontrado.")
+        print("Cadastre o restaurante e ajuste RESTAURANTE_EMAIL.")
+        import sys; sys.exit(1)
 
     rid = str(rest["id"])
     print(f"\nRestaurante: {rest['nome']} ({rid[:8]}...)")
 
-    # ── 2. Mesas ─────────────────────────────────────────────
     print("\n[1/4] Criando mesas...")
     existentes = {
         m["numero"]
-        for m in execute_query(
-            "SELECT numero FROM mesas WHERE restaurante_id = %s", (rid,)
-        )
+        for m in execute_query("SELECT numero FROM mesas WHERE restaurante_id = %s", (rid,))
     }
-    for n in range(1, 31):
+    for n in range(1, 21):
         if n not in existentes:
-            execute_write(
-                "INSERT INTO mesas (restaurante_id, numero) VALUES (%s,%s)",
-                (rid, n)
-            )
+            execute_write("INSERT INTO mesas (restaurante_id, numero) VALUES (%s,%s)", (rid, n))
     mesas = execute_query(
-        "SELECT id, numero FROM mesas WHERE restaurante_id = %s ORDER BY numero",
-        (rid,)
+        "SELECT id, numero FROM mesas WHERE restaurante_id = %s ORDER BY numero", (rid,)
     )
     mesas_ids = [str(m["id"]) for m in mesas]
     print(f"   {len(mesas_ids)} mesas disponíveis")
 
-    # ── 3. Categorias e itens ─────────────────────────────────
     print("\n[2/4] Criando categorias e itens do cardápio...")
     itens_pool = []
 
@@ -198,36 +189,30 @@ def main():
 
     print(f"   {len(itens_pool)} itens disponíveis no cardápio")
 
-    # ── 4. Pedidos ────────────────────────────────────────────
     print(f"\n[3/4] Criando pedidos (meta: {TOTAL_PEDIDOS})...")
-
     ja_existem = execute_query(
-        "SELECT COUNT(*) as n FROM pedidos WHERE restaurante_id = %s",
-        (rid,), fetchone=True
+        "SELECT COUNT(*) as n FROM pedidos WHERE restaurante_id = %s", (rid,), fetchone=True
     )["n"]
     faltam = max(0, TOTAL_PEDIDOS - ja_existem)
     print(f"   Já existem: {ja_existem} | Criando mais: {faltam}")
 
-    pedidos_criados = 0
-    itens_criados   = 0
+    pedidos_criados = itens_criados = 0
 
     for i in range(faltam):
-        mesa_id     = random.choice(mesas_ids)
-        nome        = random.choice(NOMES)
-        qtd_itens   = random.randint(1, 6)
-        selecionados= random.sample(itens_pool, min(qtd_itens, len(itens_pool)))
-        status      = rand_status()
-        criado_em   = rand_data()
+        mesa_id      = random.choice(mesas_ids)
+        nome         = random.choice(NOMES)
+        qtd_itens    = random.randint(1, 6)
+        selecionados = random.sample(itens_pool, min(qtd_itens, len(itens_pool)))
+        status       = rand_status()
+        criado_em    = rand_data()
 
-        # Calcula total
         subtotal = sum(preco * random.randint(1, 3) for _, preco in selecionados)
         total    = round(subtotal * 1.10, 2)
 
         pedido = execute_write(
             """INSERT INTO pedidos (mesa_id, restaurante_id, nome_cliente, total, status, criado_em)
                VALUES (%s,%s,%s,%s,%s,%s) RETURNING id""",
-            (mesa_id, rid, nome, total, status, criado_em),
-            returning=True
+            (mesa_id, rid, nome, total, status, criado_em), returning=True
         )
         if not pedido:
             continue
@@ -251,23 +236,18 @@ def main():
     print(f"   Pedidos criados: {pedidos_criados}")
     print(f"   Itens de pedido criados: {itens_criados}")
 
-    # ── 5. Resumo final ───────────────────────────────────────
     print("\n[4/4] Resumo do banco de dados:")
-    tabelas = [
-        "restaurantes", "mesas", "categorias",
-        "itens_cardapio", "pedidos", "itens_pedido",
-        "tokens_recuperacao",
-    ]
+    tabelas = ["restaurantes", "mesas", "categorias", "itens_cardapio", "pedidos", "itens_pedido"]
     for t in tabelas:
         try:
             r = execute_query(f"SELECT COUNT(*) as n FROM {t}", fetchone=True)
             n = r["n"] if r else 0
-            status_icon = "✓" if (t in ("pedidos","itens_pedido") and n >= 1000) or t not in ("pedidos","itens_pedido") else "!"
-            print(f"   {status_icon} {t:<22} {n:>6} registros")
+            ok = "✓" if (t in ("pedidos", "itens_pedido") and n >= 1000) or t not in ("pedidos", "itens_pedido") else "!"
+            print(f"   {ok} {t:<22} {n:>6} registros")
         except Exception:
-            print(f"   ? {t:<22} (tabela não encontrada)")
+            print(f"   ? {t:<22} (não encontrada)")
 
-    print("\nConcluido!")
+    print("\nConcluído!")
 
 
 if __name__ == "__main__":
