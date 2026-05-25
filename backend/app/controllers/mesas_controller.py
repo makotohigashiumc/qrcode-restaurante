@@ -49,4 +49,13 @@ def verificar_mesa():
     mesa = repo.buscar_por_numero(restaurante_id, int(numero))
     if not mesa:
         return jsonify({"erro": "Mesa não encontrada ou inativa"}), 404
-    return jsonify({"id": str(mesa["id"]), "numero": mesa["numero"], "ativa": mesa["ativa"]})
+
+    # Retorna ultima_liberacao para que o frontend possa invalidar
+    # pedidos do localStorage que pertencem a sessões anteriores.
+    ultima_lib = mesa.get("ultima_liberacao")
+    return jsonify({
+        "id": str(mesa["id"]),
+        "numero": mesa["numero"],
+        "ativa": mesa["ativa"],
+        "ultima_liberacao": ultima_lib.isoformat() if ultima_lib else None,
+    })

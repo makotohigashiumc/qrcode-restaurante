@@ -131,6 +131,9 @@ export default function CardapioPage() {
   const PEDIDO_KEY = `pedido_em_andamento_mesa_${mesa}_rest_${restauranteId}`
   const HIST_KEY   = `historico_pedidos_mesa_${mesa}_rest_${restauranteId}`
 
+  // ─── Carrega pedido em andamento do localStorage ─────────────────────────
+  // Descarta se for de outro dia (validação por data continua valendo).
+  // A invalidação por sessão (ultima_liberacao) ocorre no useEffect abaixo.
   const pedidoSalvo = (() => {
     try {
       const p = JSON.parse(localStorage.getItem(PEDIDO_KEY) || 'null')
@@ -149,7 +152,9 @@ export default function CardapioPage() {
   const [enviando, setEnviando]         = useState(false)
   const [acordando, setAcordando]       = useState(false)
 
-  // Histórico de pedidos da sessão (para mostrar no painel)
+  // ─── Histórico de pedidos da sessão ──────────────────────────────────────
+  // Filtra por dia ao iniciar. A filtragem por sessão (ultima_liberacao)
+  // acontece no useEffect logo abaixo, após consultar a API.
   const historico = (() => {
     try {
       const saved = JSON.parse(localStorage.getItem(HIST_KEY) || '[]')
@@ -162,7 +167,49 @@ export default function CardapioPage() {
   })()
   const [pedidosFeitos, setPedidosFeitos] = useState(historico)
 
+  // ─── Invalidação de sessão via ultima_liberacao ───────────────────────────
+  // Ao montar a página, consulta o backend para saber quando a mesa foi
+  // liberada pela última vez. Pedidos salvos no localStorage que foram
+  // criados ANTES dessa liberação pertencem a clientes anteriores e são
+  // descartados — independentemente do dispositivo usado.
+  useEffect(() => {
+    if (!restauranteId || !mesa) return
 
+    api.get(`/api/mesas/verificar?restaurante=${restauranteId}&numero=${mesa}`)
+      .then(r => {
+        const ultimaLib = r.data?.ultima_liberacao
+        if (!ultimaLib) return  // mesa nunca foi liberada, nada a invalidar
+
+        const libTs = new Date(ultimaLib).getTime()
+
+        // Limpa o histórico de pedidos anteriores à liberação
+        setPedidosFeitos(prev => {
+          const filtrados = prev.filter(p => {
+            const criadoEm = p.criado_em ? new Date(p.criado_em).getTime() : 0
+            return criadoEm > libTs
+          })
+          if (filtrados.length !== prev.length) {
+            // Atualiza o localStorage para refletir o histórico limpo
+            localStorage.setItem(HIST_KEY, JSON.stringify(filtrados))
+          }
+          return filtrados
+        })
+
+        // Limpa o pedido em andamento se ele também é anterior à liberação
+        setPedidoCriado(prev => {
+          if (!prev) return prev
+          const criadoEm = prev.criado_em ? new Date(prev.criado_em).getTime() : 0
+          if (criadoEm <= libTs) {
+            localStorage.removeItem(PEDIDO_KEY)
+            return null
+          }
+          return prev
+        })
+      })
+      .catch(() => {})  // falha silenciosa — não bloqueia o cardápio
+  }, [restauranteId, mesa])
+
+  // ─── Keep-alive: acorda o backend no Render (plano free) ─────────────────
   useEffect(() => {
     const BACKEND = import.meta.env.VITE_API_URL || 'http://localhost:5000'
     const ping = () => fetch(`${BACKEND}/health`).catch(() => {})
