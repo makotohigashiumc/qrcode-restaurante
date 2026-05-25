@@ -22,9 +22,9 @@ export default function AdminLayout() {
       <header className="bg-sumi h-14 flex items-center justify-between px-7 sticky top-0 z-40">
 
         <Link to="/admin" className="flex items-center gap-3 flex-shrink-0">
-          <img src="/logo-makoto.png" alt="Makoto" className="w-8 h-8 object-contain" />
+          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-8 h-8 object-contain" />
           <div className="hidden sm:block">
-            <p className="font-display text-washi text-sm font-bold tracking-wider-jp uppercase leading-none">MAKOTO</p>
+            <p className="font-display text-washi text-sm font-bold tracking-wider-jp uppercase leading-none">NAGOYA GARDEN</p>
             <p className="font-sans text-washi/35 text-[8px] tracking-widest-jp uppercase leading-none mt-0.5">Comida Japonesa</p>
           </div>
         </Link>

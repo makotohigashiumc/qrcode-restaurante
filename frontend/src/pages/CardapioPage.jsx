@@ -132,7 +132,13 @@ export default function CardapioPage() {
   const HIST_KEY   = `historico_pedidos_mesa_${mesa}_rest_${restauranteId}`
 
   const pedidoSalvo = (() => {
-    try { return JSON.parse(localStorage.getItem(PEDIDO_KEY) || 'null') } catch { return null }
+    try {
+      const p = JSON.parse(localStorage.getItem(PEDIDO_KEY) || 'null')
+      if (!p) return null
+      const hoje = new Date().toISOString().slice(0, 10)
+      if (p._dia && p._dia !== hoje) { localStorage.removeItem(PEDIDO_KEY); return null }
+      return p
+    } catch { return null }
   })()
 
   const [carrinho, setCarrinho]         = useState([])
@@ -148,7 +154,10 @@ export default function CardapioPage() {
     try {
       const saved = JSON.parse(localStorage.getItem(HIST_KEY) || '[]')
       if (!Array.isArray(saved)) { localStorage.removeItem(HIST_KEY); return [] }
-      return saved.filter(p => p && typeof p.id === 'string' && p.id.length > 0)
+      const hoje = new Date().toISOString().slice(0, 10)
+      const validos = saved.filter(p => p && typeof p.id === 'string' && p.id.length > 0 && p._dia === hoje)
+      if (validos.length !== saved.length) localStorage.setItem(HIST_KEY, JSON.stringify(validos))
+      return validos
     } catch { localStorage.removeItem(HIST_KEY); return [] }
   })()
   const [pedidosFeitos, setPedidosFeitos] = useState(historico)
@@ -223,8 +232,9 @@ export default function CardapioPage() {
       const novoPedido = res.data
 
       // Salva pedido em andamento e histórico
-      localStorage.setItem(PEDIDO_KEY, JSON.stringify(novoPedido))
-      const novoHistorico = [novoPedido, ...pedidosFeitos].slice(0, 10)
+      const agora = new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
+      localStorage.setItem(PEDIDO_KEY, JSON.stringify({ ...novoPedido, _dia: agora }))
+      const novoHistorico = [{ ...novoPedido, _dia: agora }, ...pedidosFeitos].slice(0, 10)
       localStorage.setItem(HIST_KEY, JSON.stringify(novoHistorico))
       setPedidosFeitos(novoHistorico)
 

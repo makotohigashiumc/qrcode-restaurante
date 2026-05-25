@@ -128,7 +128,7 @@ export default function ConfiguracaoPage() {
                 label="Nome do restaurante"
                 value={form.nome}
                 onChange={e => set('nome', e.target.value)}
-                placeholder="Ex: Makoto Comida Japonesa"
+                placeholder="Ex: Nagoya Garden"
               />
               <div className="grid grid-cols-2 gap-6">
                 <div>

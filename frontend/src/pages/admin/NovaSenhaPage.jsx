@@ -47,8 +47,8 @@ export default function NovaSenhaPage() {
     <div className="min-h-screen bg-washi flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-10">
-          <img src="/logo-makoto.png" alt="Makoto" className="w-14 h-14 object-contain mb-4" />
-          <p className="font-display text-sumi text-lg font-bold tracking-wider-jp uppercase">MAKOTO</p>
+          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-14 h-14 object-contain mb-4" />
+          <p className="font-display text-sumi text-lg font-bold tracking-wider-jp uppercase">NAGOYA GARDEN</p>
           <p className="font-sans text-sumi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
         </div>
 

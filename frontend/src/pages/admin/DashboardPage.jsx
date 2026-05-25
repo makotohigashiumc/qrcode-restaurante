@@ -51,7 +51,7 @@ export default function DashboardPage() {
       <div className="flex items-end justify-between mb-8 pb-5 border-b border-half border-washi-mid">
         <div>
           <h1 className="font-display text-sumi text-3xl font-light">
-            Boa tarde, Makoto.
+            Boa tarde!
           </h1>
           <p className="font-sans text-sumi/40 text-xs tracking-wide mt-1 capitalize">
             {diaSemana}, {dataFormatada}

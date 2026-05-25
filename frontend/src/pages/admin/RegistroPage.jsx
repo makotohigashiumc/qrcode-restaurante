@@ -105,9 +105,9 @@ export default function RegistroPage() {
       {/* Painel esquerdo */}
       <div className="hidden md:flex flex-col justify-between flex-1 px-14 py-12 bg-sumi">
         <div className="flex items-center gap-4">
-          <img src="/logo-makoto.png" alt="Makoto" className="w-12 h-12 object-contain" />
+          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-12 h-12 object-contain" />
           <div>
-            <p className="font-display text-washi tracking-wider-jp text-lg font-bold uppercase">MAKOTO</p>
+            <p className="font-display text-washi tracking-wider-jp text-lg font-bold uppercase">NAGOYA GARDEN</p>
             <p className="font-sans text-washi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function RegistroPage() {
             Cadastre seu restaurante e tenha cardápio digital, gestão de pedidos e painel da cozinha funcionando hoje.
           </p>
         </div>
-        <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">Sistema de gestão — Makoto</p>
+        <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">Sistema de gestão — Nagoya Garden</p>
       </div>
 
       {/* Formulário */}
@@ -148,7 +148,7 @@ export default function RegistroPage() {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <p className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/35 pt-1">Dados do restaurante</p>
-                <Field label="Nome do restaurante *" k="nome" placeholder="Ex: Makoto Comida Japonesa" />
+                <Field label="Nome do restaurante *" k="nome" placeholder="Ex: Nagoya Garden" />
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="E-mail *" k="email" type="email" placeholder="admin@..." />
                   <Field label="Telefone *" k="telefone" placeholder="(11) 99999-0000" />

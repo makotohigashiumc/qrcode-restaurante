@@ -23,8 +23,8 @@ export function EsqueciSenhaPage() {
     <div className="min-h-screen bg-washi flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-10">
-          <img src="/logo-makoto.png" alt="Makoto" className="w-14 h-14 object-contain mb-4" />
-          <p className="font-display text-sumi text-lg font-bold tracking-wider-jp uppercase">MAKOTO</p>
+          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-14 h-14 object-contain mb-4" />
+          <p className="font-display text-sumi text-lg font-bold tracking-wider-jp uppercase">NAGOYA GARDEN</p>
           <p className="font-sans text-sumi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
         </div>
 
@@ -49,7 +49,7 @@ export function EsqueciSenhaPage() {
                 <label className="block font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 mb-2">E-mail</label>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@makoto.com.br" autoComplete="email"
+                  placeholder="admin@nagoyagarden.com.br" autoComplete="email"
                   className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors"
                 />
               </div>

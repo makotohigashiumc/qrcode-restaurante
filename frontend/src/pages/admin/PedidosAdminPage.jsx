@@ -275,7 +275,7 @@ export default function PedidosAdminPage() {
             <div className="text-center py-16 text-sumi/50 text-[13px]">Nenhum pedido encontrado.</div>
           ) : Object.values(porMesa).map(({ mesa, pedidos: mp }) => {
             const totalMesa = mp.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.total, 0)
-            const temAtivos = mp.some(p => !['entregue','cancelado'].includes(p.status))
+            const temAtivos = mp.some(p => p.status !== 'cancelado')
             return (
               <div key={mesa} className="bg-white border border-washi-dark rounded-xl overflow-hidden">
                 {/* Header da mesa */}

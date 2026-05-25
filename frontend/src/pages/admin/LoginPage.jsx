@@ -33,9 +33,9 @@ export default function LoginPage() {
       <div className="hidden md:flex flex-col justify-between flex-1 px-14 py-12 bg-sumi">
         {/* Logo */}
         <div className="flex items-center gap-4">
-          <img src="/logo-makoto.png" alt="Makoto" className="w-12 h-12 object-contain" />
+          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-12 h-12 object-contain" />
           <div>
-            <p className="font-display text-washi tracking-wider-jp text-lg font-bold uppercase">MAKOTO</p>
+            <p className="font-display text-washi tracking-wider-jp text-lg font-bold uppercase">NAGOYA GARDEN</p>
             <p className="font-sans text-washi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
           </div>
         </div>
@@ -52,7 +52,7 @@ export default function LoginPage() {
 
         {/* Rodapé */}
         <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">
-          Sistema de gestão — Makoto Restaurante
+          Sistema de gestão — Nagoya Garden
         </p>
       </div>
 
@@ -61,9 +61,9 @@ export default function LoginPage() {
 
           {/* Logo mobile */}
           <div className="flex md:hidden items-center gap-3 mb-10">
-            <img src="/logo-makoto.png" alt="Makoto" className="w-10 h-10 object-contain" />
+            <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-10 h-10 object-contain" />
             <div>
-              <p className="font-display text-sumi tracking-wider-jp text-base font-bold uppercase">MAKOTO</p>
+              <p className="font-display text-sumi tracking-wider-jp text-base font-bold uppercase">NAGOYA GARDEN</p>
               <p className="font-sans text-sumi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
             </div>
           </div>
@@ -80,7 +80,7 @@ export default function LoginPage() {
                 type="email"
                 value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="admin@makoto.com.br"
+                placeholder="admin@nagoyagarden.com.br"
                 autoComplete="email"
                 className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors"
               />
