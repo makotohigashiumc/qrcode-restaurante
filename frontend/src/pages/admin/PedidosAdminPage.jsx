@@ -178,7 +178,10 @@ export default function PedidosAdminPage() {
     (mesa) => api.post(`/api/pedidos/mesa/${mesa}/liberar`),
     {
       onSuccess: (_, mesa) => {
+        // Invalida TODOS os caches de pedidos e relatórios para garantir
+        // que a interface reflita o estado pós-liberação imediatamente.
         qc.invalidateQueries('pedidos')
+        qc.invalidateQueries('relatorio-mesa')
         toast.success(`Mesa ${mesa} liberada!`)
       },
       onError: () => toast.error('Erro ao liberar mesa'),
@@ -199,7 +202,7 @@ export default function PedidosAdminPage() {
     { key: 'cancelado',  label: 'Cancelados' },
   ]
 
-  // Agrupar por mesa para view de mesas
+  // Agrupa por mesa para a view de mesas
   const porMesa = pedidos.reduce((acc, p) => {
     const key = `Mesa ${p.mesa_numero}`
     if (!acc[key]) acc[key] = { mesa: p.mesa_numero, pedidos: [] }
@@ -239,7 +242,6 @@ export default function PedidosAdminPage() {
               Por mesa
             </button>
           </div>
-
         </div>
       </div>
 
@@ -275,7 +277,14 @@ export default function PedidosAdminPage() {
             <div className="text-center py-16 text-sumi/50 text-[13px]">Nenhum pedido encontrado.</div>
           ) : Object.values(porMesa).map(({ mesa, pedidos: mp }) => {
             const totalMesa = mp.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.total, 0)
-            const temAtivos = mp.some(p => p.status !== 'cancelado')
+
+            // "Liberar mesa" só aparece se houver pedidos que ainda não foram
+            // entregues nem cancelados — ou seja, pedidos que ainda precisam
+            // de ação. Após liberar, o backend move tudo para "entregue" e
+            // grava ultima_liberacao; na próxima query esses pedidos somem
+            // da listagem, então o botão desaparece naturalmente.
+            const temPendentes = mp.some(p => !['entregue', 'cancelado'].includes(p.status))
+
             return (
               <div key={mesa} className="bg-white border border-washi-dark rounded-xl overflow-hidden">
                 {/* Header da mesa */}
@@ -294,10 +303,12 @@ export default function PedidosAdminPage() {
                       className="text-[11px] bg-washi-mid hover:bg-washi-dark text-sumi/50 px-2.5 py-1.5 rounded-lg transition-colors">
                       Relatório
                     </button>
-                    {temAtivos && (
+                    {/* Botão só aparece enquanto houver pedidos pendentes */}
+                    {temPendentes && (
                       <button
                         onClick={() => { if (confirm(`Liberar Mesa ${mesa}? Todos os pedidos serão marcados como entregue.`)) liberarMesa.mutate(mesa) }}
-                        className="text-[11px] bg-green-500 hover:bg-green-600 text-white px-2.5 py-1.5 rounded-lg transition-colors font-medium">
+                        disabled={liberarMesa.isLoading}
+                        className="text-[11px] bg-green-500 hover:bg-green-600 text-white px-2.5 py-1.5 rounded-lg transition-colors font-medium disabled:opacity-50">
                         Liberar mesa
                       </button>
                     )}
@@ -356,16 +367,16 @@ export default function PedidosAdminPage() {
 
         /* ── View lista ── */
         <div className="space-y-4">
-          {/* Resumo de mesas com pedidos ativos — botão liberar */}
+          {/* Resumo de mesas com pedidos pendentes — botão liberar */}
           {(() => {
-            const mesasAtivas = {}
+            const mesasPendentes = {}
             pedidos.forEach(p => {
-              if (!['entregue','cancelado'].includes(p.status)) {
-                if (!mesasAtivas[p.mesa_numero]) mesasAtivas[p.mesa_numero] = 0
-                mesasAtivas[p.mesa_numero]++
+              if (!['entregue', 'cancelado'].includes(p.status)) {
+                if (!mesasPendentes[p.mesa_numero]) mesasPendentes[p.mesa_numero] = 0
+                mesasPendentes[p.mesa_numero]++
               }
             })
-            const nums = Object.keys(mesasAtivas).map(Number).sort((a,b) => a-b)
+            const nums = Object.keys(mesasPendentes).map(Number).sort((a,b) => a-b)
             if (nums.length === 0) return null
             return (
               <div className="bg-white border border-washi-dark rounded-xl p-3 flex flex-wrap gap-2 items-center">
@@ -373,11 +384,12 @@ export default function PedidosAdminPage() {
                 {nums.map(n => (
                   <div key={n} className="flex items-center gap-1.5">
                     <span className="text-[12px] font-medium text-sumi bg-washi px-2 py-1 rounded-lg">
-                      Mesa {n} ({mesasAtivas[n]})
+                      Mesa {n} ({mesasPendentes[n]})
                     </span>
                     <button
                       onClick={() => { if (confirm(`Liberar Mesa ${n}? Todos os pedidos serão marcados como entregue.`)) liberarMesa.mutate(n) }}
-                      className="text-[11px] bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg transition-colors font-medium">
+                      disabled={liberarMesa.isLoading}
+                      className="text-[11px] bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg transition-colors font-medium disabled:opacity-50">
                       Liberar
                     </button>
                     <button onClick={() => setRel(n)}

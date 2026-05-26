@@ -98,28 +98,59 @@ def consultar_pedido_publico(pedido_id):
 
 
 # ─── ADMIN: listar pedidos ────────────────────────────────────
+# Filtra pedidos pelo data_filtro E, quando o filtro for "hoje",
+# exclui pedidos anteriores à ultima_liberacao de cada mesa
+# (assim sessões antigas não aparecem misturadas com a sessão atual).
 
 @pedidos_bp.get("")
 @requer_auth
 def listar_pedidos():
-    status     = request.args.get("status")
-    mesa       = request.args.get("mesa")
+    status      = request.args.get("status")
+    mesa        = request.args.get("mesa")
     data_filtro = request.args.get("data")   # YYYY-MM-DD
 
     pedidos = repo.listar_por_restaurante(request.restaurante_id, status)
+
+    # Carrega ultima_liberacao de todas as mesas do restaurante de uma vez
+    # para evitar N queries dentro do loop.
+    mesas_lib = {}
+    try:
+        rows = execute_query(
+            "SELECT numero, ultima_liberacao FROM mesas WHERE restaurante_id = %s",
+            (request.restaurante_id,)
+        )
+        for r in rows:
+            mesas_lib[r["numero"]] = r["ultima_liberacao"]
+    except Exception:
+        pass
+
     resultado = []
     for p in pedidos:
+        # Filtro de mesa
         if mesa and str(p.get("mesa_numero")) != str(mesa):
             continue
+
+        # Filtro de data
         if data_filtro and p.get("criado_em"):
             if p["criado_em"].strftime("%Y-%m-%d") != data_filtro:
                 continue
+
+        # ── Filtro de sessão ────────────────────────────────────────────
+        # Se um pedido foi criado ANTES da última liberação da mesa,
+        # ele pertence a uma sessão anterior e não deve aparecer
+        # junto com os pedidos da sessão atual.
+        # Isso vale independentemente do filtro de data.
+        ultima_lib = mesas_lib.get(p.get("mesa_numero"))
+        if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
+            continue
+        # ────────────────────────────────────────────────────────────────
+
         itens = repo.buscar_itens_do_pedido(str(p["id"]))
         resultado.append({
             **dict(p),
-            "total":        float(p["total"]),
-            "criado_em":    p["criado_em"].isoformat() if p["criado_em"] else None,
-            "atualizado_em":p.get("atualizado_em", p["criado_em"]).isoformat() if p.get("atualizado_em") else None,
+            "total":         float(p["total"]),
+            "criado_em":     p["criado_em"].isoformat() if p["criado_em"] else None,
+            "atualizado_em": p.get("atualizado_em", p["criado_em"]).isoformat() if p.get("atualizado_em") else None,
             "itens": [{**dict(i), "preco_unitario": float(i["preco_unitario"])} for i in itens],
         })
     return jsonify(resultado)
@@ -162,10 +193,8 @@ def relatorio_mesa(numero_mesa):
     if not mesa:
         return jsonify({"erro": "Mesa não encontrada"}), 404
 
-    # Busca timestamp da última liberação
     ultima_lib = mesa.get("ultima_liberacao")
 
-    # Todos os pedidos não cancelados da mesa
     todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
     pedidos_mesa = []
     for p in todos:
@@ -173,7 +202,6 @@ def relatorio_mesa(numero_mesa):
             continue
         if p.get("status") == "cancelado":
             continue
-        # Filtra pela sessão atual
         if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
             continue
         pedidos_mesa.append(p)
@@ -202,9 +230,9 @@ def relatorio_mesa(numero_mesa):
         total_geral += float(p["total"])
 
     return jsonify({
-        "mesa":        numero_mesa,
-        "clientes":    list(clientes.values()),
-        "total_geral": round(total_geral, 2),
+        "mesa":         numero_mesa,
+        "clientes":     list(clientes.values()),
+        "total_geral":  round(total_geral, 2),
         "sessao_desde": ultima_lib.isoformat() if ultima_lib else None,
     })
 
@@ -232,7 +260,8 @@ def liberar_mesa(numero_mesa):
     for p in pedidos_ativos:
         repo.atualizar_status(str(p["id"]), request.restaurante_id, "entregue")
 
-    # Registra o momento da liberação para separar a próxima sessão
+    # Registra o momento da liberação para separar a próxima sessão.
+    # Todos os pedidos criados ANTES deste timestamp pertencem à sessão encerrada.
     agora = datetime.now(timezone.utc)
     execute_write(
         "UPDATE mesas SET ultima_liberacao = %s WHERE id = %s",

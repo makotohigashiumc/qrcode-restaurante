@@ -131,10 +131,9 @@ export default function CardapioPage() {
   const PEDIDO_KEY = `pedido_em_andamento_mesa_${mesa}_rest_${restauranteId}`
   const HIST_KEY   = `historico_pedidos_mesa_${mesa}_rest_${restauranteId}`
 
-  // ─── Carrega pedido em andamento do localStorage ─────────────────────────
-  // Descarta se for de outro dia (validação por data continua valendo).
-  // A invalidação por sessão (ultima_liberacao) ocorre no useEffect abaixo.
-  const pedidoSalvo = (() => {
+  // ── Estado base: lê localStorage mas SÓ aceita pedidos do dia de hoje ──
+  // A invalidação por sessão (ultima_liberacao) acontece no useEffect abaixo.
+  const lerPedidoSalvo = () => {
     try {
       const p = JSON.parse(localStorage.getItem(PEDIDO_KEY) || 'null')
       if (!p) return null
@@ -142,20 +141,9 @@ export default function CardapioPage() {
       if (p._dia && p._dia !== hoje) { localStorage.removeItem(PEDIDO_KEY); return null }
       return p
     } catch { return null }
-  })()
+  }
 
-  const [carrinho, setCarrinho]         = useState([])
-  const [nomeCliente, setNomeCliente]   = useState('')
-  const [categoriaAtiva, setCat]        = useState('')
-  const [carrinhoAberto, setCarrinho2]  = useState(false)
-  const [pedidoCriado, setPedidoCriado] = useState(pedidoSalvo)
-  const [enviando, setEnviando]         = useState(false)
-  const [acordando, setAcordando]       = useState(false)
-
-  // ─── Histórico de pedidos da sessão ──────────────────────────────────────
-  // Filtra por dia ao iniciar. A filtragem por sessão (ultima_liberacao)
-  // acontece no useEffect logo abaixo, após consultar a API.
-  const historico = (() => {
+  const lerHistorico = () => {
     try {
       const saved = JSON.parse(localStorage.getItem(HIST_KEY) || '[]')
       if (!Array.isArray(saved)) { localStorage.removeItem(HIST_KEY); return [] }
@@ -164,14 +152,22 @@ export default function CardapioPage() {
       if (validos.length !== saved.length) localStorage.setItem(HIST_KEY, JSON.stringify(validos))
       return validos
     } catch { localStorage.removeItem(HIST_KEY); return [] }
-  })()
-  const [pedidosFeitos, setPedidosFeitos] = useState(historico)
+  }
 
-  // ─── Invalidação de sessão via ultima_liberacao ───────────────────────────
-  // Ao montar a página, consulta o backend para saber quando a mesa foi
-  // liberada pela última vez. Pedidos salvos no localStorage que foram
-  // criados ANTES dessa liberação pertencem a clientes anteriores e são
-  // descartados — independentemente do dispositivo usado.
+  const [carrinho, setCarrinho]         = useState([])
+  const [nomeCliente, setNomeCliente]   = useState('')
+  const [categoriaAtiva, setCat]        = useState('')
+  const [carrinhoAberto, setCarrinho2]  = useState(false)
+  const [pedidoCriado, setPedidoCriado] = useState(lerPedidoSalvo)
+  const [pedidosFeitos, setPedidosFeitos] = useState(lerHistorico)
+  const [enviando, setEnviando]         = useState(false)
+  const [acordando, setAcordando]       = useState(false)
+
+  // ── Invalidação de sessão via ultima_liberacao ──────────────────────────
+  // Toda vez que a página carrega (escaneou o QR Code, atualizou, voltou),
+  // consulta o backend para saber quando a mesa foi liberada pela última vez.
+  // Pedidos do localStorage criados ANTES dessa liberação são descartados,
+  // independentemente do dispositivo ou de quem foi o cliente anterior.
   useEffect(() => {
     if (!restauranteId || !mesa) return
 
@@ -182,39 +178,37 @@ export default function CardapioPage() {
 
         const libTs = new Date(ultimaLib).getTime()
 
-        // Limpa o histórico de pedidos anteriores à liberação
-        setPedidosFeitos(prev => {
-          const filtrados = prev.filter(p => {
-            const criadoEm = p.criado_em ? new Date(p.criado_em).getTime() : 0
-            return criadoEm > libTs
-          })
-          if (filtrados.length !== prev.length) {
-            // Atualiza o localStorage para refletir o histórico limpo
-            localStorage.setItem(HIST_KEY, JSON.stringify(filtrados))
-          }
-          return filtrados
+        // Filtra o histórico: descarta pedidos anteriores à liberação
+        const historicoAtual = lerHistorico()
+        const filtrados = historicoAtual.filter(p => {
+          const criadoEm = p.criado_em ? new Date(p.criado_em).getTime() : 0
+          return criadoEm > libTs
         })
 
-        // Limpa o pedido em andamento se ele também é anterior à liberação
-        setPedidoCriado(prev => {
-          if (!prev) return prev
-          const criadoEm = prev.criado_em ? new Date(prev.criado_em).getTime() : 0
+        // Atualiza localStorage e estado em uma só operação
+        localStorage.setItem(HIST_KEY, JSON.stringify(filtrados))
+        setPedidosFeitos(filtrados)
+
+        // Verifica o pedido em andamento
+        const pedidoAtual = lerPedidoSalvo()
+        if (pedidoAtual) {
+          const criadoEm = pedidoAtual.criado_em ? new Date(pedidoAtual.criado_em).getTime() : 0
           if (criadoEm <= libTs) {
+            // Pedido em andamento também é da sessão anterior — limpa tudo
             localStorage.removeItem(PEDIDO_KEY)
-            return null
+            setPedidoCriado(null)
           }
-          return prev
-        })
+        }
       })
-      .catch(() => {})  // falha silenciosa — não bloqueia o cardápio
+      .catch(() => {})  // falha silenciosa — o cardápio funciona normalmente
   }, [restauranteId, mesa])
 
-  // ─── Keep-alive: acorda o backend no Render (plano free) ─────────────────
+  // ── Keep-alive: mantém o backend Render acordado ────────────────────────
   useEffect(() => {
     const BACKEND = import.meta.env.VITE_API_URL || 'http://localhost:5000'
     const ping = () => fetch(`${BACKEND}/health`).catch(() => {})
     ping()
-    const id = setInterval(ping, 4 * 60 * 1000) // a cada 4 minutos
+    const id = setInterval(ping, 4 * 60 * 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -278,8 +272,7 @@ export default function CardapioPage() {
       )
       const novoPedido = res.data
 
-      // Salva pedido em andamento e histórico
-      const agora = new Date().toISOString().slice(0, 10) // 'YYYY-MM-DD'
+      const agora = new Date().toISOString().slice(0, 10)
       localStorage.setItem(PEDIDO_KEY, JSON.stringify({ ...novoPedido, _dia: agora }))
       const novoHistorico = [{ ...novoPedido, _dia: agora }, ...pedidosFeitos].slice(0, 10)
       localStorage.setItem(HIST_KEY, JSON.stringify(novoHistorico))
@@ -292,7 +285,6 @@ export default function CardapioPage() {
       if (err?.code === 'ECONNABORTED') {
         toast.error('Pedido demorou para confirmar. Tente novamente.')
       } else if (!err?.response) {
-        // Backend dormindo — acorda e avisa
         setAcordando(true)
         toast('Servidor reiniciando. Aguarde 30 segundos e tente de novo.', { duration: 8000 })
         setTimeout(() => setAcordando(false), 30000)
@@ -322,14 +314,12 @@ export default function CardapioPage() {
 
   return (
     <div className="min-h-screen bg-washi">
-      {/* Aviso de reconexão */}
       {acordando && (
         <div className="fixed top-0 left-0 right-0 z-50 bg-amber-500 text-white text-center py-2 text-sm font-medium">
           Servidor reiniciando... aguarde alguns segundos
         </div>
       )}
 
-      {/* Header */}
       <header className="bg-white border-b border-washi-dark sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div>
@@ -337,7 +327,6 @@ export default function CardapioPage() {
             <p className="text-xs text-sumi/50">Mesa <span className="font-semibold text-beni">#{mesa}</span></p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Botão acompanhar pedido anterior */}
             {pedidosFeitos.length > 0 && (
               <button
                 onClick={() => setPedidoCriado(pedidosFeitos[0])}
@@ -361,7 +350,6 @@ export default function CardapioPage() {
           </div>
         </div>
 
-        {/* Nome do cliente */}
         <div className="max-w-2xl mx-auto px-4 pb-3">
           <input
             value={nomeCliente}
@@ -371,7 +359,6 @@ export default function CardapioPage() {
           />
         </div>
 
-        {/* Categorias */}
         <div className="max-w-2xl mx-auto px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
           {categorias.map(cat => (
             <button key={cat.id} onClick={() => setCat(String(cat.id))}
@@ -383,7 +370,6 @@ export default function CardapioPage() {
         </div>
       </header>
 
-      {/* Itens */}
       <main className="max-w-2xl mx-auto px-4 py-6">
         {isLoading ? (
           <div className="flex justify-center py-20">
@@ -451,7 +437,6 @@ export default function CardapioPage() {
         )}
       </main>
 
-      {/* Painel de carrinho */}
       {carrinhoAberto && (
         <div className="fixed inset-0 z-50 flex">
           <div className="flex-1 bg-black/40" onClick={() => setCarrinho2(false)} />
@@ -465,12 +450,10 @@ export default function CardapioPage() {
               {carrinho.length === 0 ? (
                 <>
                   <p className="text-center text-sumi/50 py-6 text-sm">Nenhum item no carrinho</p>
-
-                  {/* Histórico de pedidos anteriores */}
                   {pedidosFeitos.length > 0 && (
                     <div>
                       <p className="text-[11px] font-medium uppercase tracking-widest text-sumi/50 mb-3">
-                        Pedidos anteriores
+                        Pedidos desta sessão
                       </p>
                       {pedidosFeitos.map((p, i) => (
                         <button
