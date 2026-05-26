@@ -283,7 +283,7 @@ export default function PedidosAdminPage() {
             // de ação. Após liberar, o backend move tudo para "entregue" e
             // grava ultima_liberacao; na próxima query esses pedidos somem
             // da listagem, então o botão desaparece naturalmente.
-            const temPendentes = mp.some(p => !['entregue', 'cancelado'].includes(p.status))
+            const temPendentes = mp.length > 0
 
             return (
               <div key={mesa} className="bg-white border border-washi-dark rounded-xl overflow-hidden">
@@ -371,10 +371,8 @@ export default function PedidosAdminPage() {
           {(() => {
             const mesasPendentes = {}
             pedidos.forEach(p => {
-              if (!['entregue', 'cancelado'].includes(p.status)) {
-                if (!mesasPendentes[p.mesa_numero]) mesasPendentes[p.mesa_numero] = 0
-                mesasPendentes[p.mesa_numero]++
-              }
+              if (!mesasPendentes[p.mesa_numero]) mesasPendentes[p.mesa_numero] = 0
+              mesasPendentes[p.mesa_numero]++
             })
             const nums = Object.keys(mesasPendentes).map(Number).sort((a,b) => a-b)
             if (nums.length === 0) return null
