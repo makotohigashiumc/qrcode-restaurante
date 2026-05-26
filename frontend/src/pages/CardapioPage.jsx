@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from 'react-query'
 import toast from 'react-hot-toast'
@@ -131,79 +131,92 @@ export default function CardapioPage() {
   const PEDIDO_KEY = `pedido_em_andamento_mesa_${mesa}_rest_${restauranteId}`
   const HIST_KEY   = `historico_pedidos_mesa_${mesa}_rest_${restauranteId}`
 
-  // ── Estado base: lê localStorage mas SÓ aceita pedidos do dia de hoje ──
-  // A invalidação por sessão (ultima_liberacao) acontece no useEffect abaixo.
-  const lerPedidoSalvo = () => {
-    try {
-      const p = JSON.parse(localStorage.getItem(PEDIDO_KEY) || 'null')
-      if (!p) return null
-      const hoje = new Date().toISOString().slice(0, 10)
-      if (p._dia && p._dia !== hoje) { localStorage.removeItem(PEDIDO_KEY); return null }
-      return p
-    } catch { return null }
-  }
+  const [carrinho, setCarrinho]           = useState([])
+  const [nomeCliente, setNomeCliente]     = useState('')
+  const [categoriaAtiva, setCat]          = useState('')
+  const [carrinhoAberto, setCarrinho2]    = useState(false)
+  const [pedidoCriado, setPedidoCriado]   = useState(null)
+  const [pedidosFeitos, setPedidosFeitos] = useState([])
+  const [enviando, setEnviando]           = useState(false)
+  const [acordando, setAcordando]         = useState(false)
 
-  const lerHistorico = () => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(HIST_KEY) || '[]')
-      if (!Array.isArray(saved)) { localStorage.removeItem(HIST_KEY); return [] }
-      const hoje = new Date().toISOString().slice(0, 10)
-      const validos = saved.filter(p => p && typeof p.id === 'string' && p.id.length > 0 && p._dia === hoje)
-      if (validos.length !== saved.length) localStorage.setItem(HIST_KEY, JSON.stringify(validos))
-      return validos
-    } catch { localStorage.removeItem(HIST_KEY); return [] }
-  }
-
-  const [carrinho, setCarrinho]         = useState([])
-  const [nomeCliente, setNomeCliente]   = useState('')
-  const [categoriaAtiva, setCat]        = useState('')
-  const [carrinhoAberto, setCarrinho2]  = useState(false)
-  const [pedidoCriado, setPedidoCriado] = useState(lerPedidoSalvo)
-  const [pedidosFeitos, setPedidosFeitos] = useState(lerHistorico)
-  const [enviando, setEnviando]         = useState(false)
-  const [acordando, setAcordando]       = useState(false)
-
-  // ── Invalidação de sessão via ultima_liberacao ──────────────────────────
-  // Toda vez que a página carrega (escaneou o QR Code, atualizou, voltou),
-  // consulta o backend para saber quando a mesa foi liberada pela última vez.
-  // Pedidos do localStorage criados ANTES dessa liberação são descartados,
-  // independentemente do dispositivo ou de quem foi o cliente anterior.
+  // ── Verificação de sessão na montagem ──────────────────────────────────────
+  // IMPORTANTE: o estado começa vazio ([], null) intencionalmente.
+  // Só populamos após confirmar com o backend quais pedidos pertencem
+  // à sessão atual. Isso evita mostrar pedidos antigos por qualquer instante.
   useEffect(() => {
     if (!restauranteId || !mesa) return
 
+    const hoje = new Date().toISOString().slice(0, 10)
+
+    // Lê o localStorage
+    const lerLocalStorage = () => {
+      let historico = []
+      let pedidoAndamento = null
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(HIST_KEY) || '[]')
+        if (Array.isArray(saved)) {
+          historico = saved.filter(p => p && typeof p.id === 'string' && p.id.length > 0 && p._dia === hoje)
+        }
+      } catch { localStorage.removeItem(HIST_KEY) }
+
+      try {
+        const p = JSON.parse(localStorage.getItem(PEDIDO_KEY) || 'null')
+        if (p && p._dia === hoje) pedidoAndamento = p
+        else if (p) localStorage.removeItem(PEDIDO_KEY)
+      } catch { localStorage.removeItem(PEDIDO_KEY) }
+
+      return { historico, pedidoAndamento }
+    }
+
+    // Consulta o backend para obter ultima_liberacao
     api.get(`/api/mesas/verificar?restaurante=${restauranteId}&numero=${mesa}`)
       .then(r => {
         const ultimaLib = r.data?.ultima_liberacao
-        if (!ultimaLib) return  // mesa nunca foi liberada, nada a invalidar
+        const { historico, pedidoAndamento } = lerLocalStorage()
+
+        if (!ultimaLib) {
+          // Mesa nunca foi liberada — usa tudo do localStorage
+          setPedidosFeitos(historico)
+          setPedidoCriado(pedidoAndamento)
+          if (historico.length !== JSON.parse(localStorage.getItem(HIST_KEY) || '[]').length) {
+            localStorage.setItem(HIST_KEY, JSON.stringify(historico))
+          }
+          return
+        }
 
         const libTs = new Date(ultimaLib).getTime()
 
-        // Filtra o histórico: descarta pedidos anteriores à liberação
-        const historicoAtual = lerHistorico()
-        const filtrados = historicoAtual.filter(p => {
+        // Filtra apenas pedidos criados DEPOIS da última liberação
+        const historicoValido = historico.filter(p => {
           const criadoEm = p.criado_em ? new Date(p.criado_em).getTime() : 0
           return criadoEm > libTs
         })
 
-        // Atualiza localStorage e estado em uma só operação
-        localStorage.setItem(HIST_KEY, JSON.stringify(filtrados))
-        setPedidosFeitos(filtrados)
+        localStorage.setItem(HIST_KEY, JSON.stringify(historicoValido))
+        setPedidosFeitos(historicoValido)
 
-        // Verifica o pedido em andamento
-        const pedidoAtual = lerPedidoSalvo()
-        if (pedidoAtual) {
-          const criadoEm = pedidoAtual.criado_em ? new Date(pedidoAtual.criado_em).getTime() : 0
-          if (criadoEm <= libTs) {
-            // Pedido em andamento também é da sessão anterior — limpa tudo
+        // Verifica se o pedido em andamento é da sessão atual
+        if (pedidoAndamento) {
+          const criadoEm = pedidoAndamento.criado_em ? new Date(pedidoAndamento.criado_em).getTime() : 0
+          if (criadoEm > libTs) {
+            setPedidoCriado(pedidoAndamento)
+          } else {
             localStorage.removeItem(PEDIDO_KEY)
-            setPedidoCriado(null)
+            // pedidoCriado permanece null
           }
         }
       })
-      .catch(() => {})  // falha silenciosa — o cardápio funciona normalmente
+      .catch(() => {
+        // Sem conexão: usa localStorage normalmente (melhor que tela vazia)
+        const { historico, pedidoAndamento } = lerLocalStorage()
+        setPedidosFeitos(historico)
+        setPedidoCriado(pedidoAndamento)
+      })
   }, [restauranteId, mesa])
 
-  // ── Keep-alive: mantém o backend Render acordado ────────────────────────
+  // ── Keep-alive: mantém o backend Render acordado ──────────────────────────
   useEffect(() => {
     const BACKEND = import.meta.env.VITE_API_URL || 'http://localhost:5000'
     const ping = () => fetch(`${BACKEND}/health`).catch(() => {})
@@ -272,12 +285,13 @@ export default function CardapioPage() {
       )
       const novoPedido = res.data
 
-      const agora = new Date().toISOString().slice(0, 10)
-      localStorage.setItem(PEDIDO_KEY, JSON.stringify({ ...novoPedido, _dia: agora }))
-      const novoHistorico = [{ ...novoPedido, _dia: agora }, ...pedidosFeitos].slice(0, 10)
+      const hoje = new Date().toISOString().slice(0, 10)
+      const pedidoParaSalvar = { ...novoPedido, _dia: hoje }
+
+      localStorage.setItem(PEDIDO_KEY, JSON.stringify(pedidoParaSalvar))
+      const novoHistorico = [pedidoParaSalvar, ...pedidosFeitos].slice(0, 10)
       localStorage.setItem(HIST_KEY, JSON.stringify(novoHistorico))
       setPedidosFeitos(novoHistorico)
-
       setPedidoCriado(novoPedido)
       setCarrinho([])
       setCarrinho2(false)
