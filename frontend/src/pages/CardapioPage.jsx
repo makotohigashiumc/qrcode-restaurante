@@ -17,7 +17,6 @@ const STATUS_INFO = {
   entregue:   { label: 'Entregue',         desc: 'Pedido entregue. Bom apetite!' },
   cancelado:  { label: 'Cancelado',        desc: 'Este pedido foi cancelado.' },
 }
-
 const STATUS_COR = {
   recebido:   'bg-blue-50 text-blue-700 border-blue-200',
   em_preparo: 'bg-amber-50 text-amber-700 border-amber-200',
@@ -26,44 +25,13 @@ const STATUS_COR = {
   cancelado:  'bg-red-50 text-red-600 border-red-200',
 }
 
-function PedidoCard({ pedido, refetchKey, onRefetch }) {
-  // Usa os dados já carregados — não precisa fazer nova requisição
-  const info = STATUS_INFO[pedido?.status] || STATUS_INFO.recebido
-  const cor  = STATUS_COR[pedido?.status]  || STATUS_COR.recebido
+// ── Tela de acompanhamento de pedidos ────────────────────────
+// Busca os pedidos DIRETAMENTE do backend a cada 10s.
+// O backend só retorna pedidos da sessão atual (após ultima_liberacao).
+// Quando a mesa é liberada, a próxima consulta retorna lista vazia
+// e o cliente é automaticamente redirecionado de volta ao cardápio.
 
-  return (
-    <div className="bg-white rounded-2xl p-5 border border-washi-dark">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          {pedido.nome_cliente && <p className="text-sm font-semibold text-sumi">{pedido.nome_cliente}</p>}
-          <p className="text-xs text-sumi/50 mt-0.5">{info.desc}</p>
-        </div>
-        <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-medium flex-shrink-0 ml-2 ${cor}`}>
-          {info.label}
-        </span>
-      </div>
-      {pedido.itens?.length > 0 && (
-        <div className="bg-washi rounded-xl p-3 space-y-1.5">
-          {pedido.itens.map((it, i) => (
-            <div key={i} className="flex justify-between text-sm">
-              <span className="text-sumi">{it.quantidade}× {it.item_nome || it.nome}</span>
-              <span className="text-sumi/50">{fmt(it.preco_unitario * it.quantidade)}</span>
-            </div>
-          ))}
-          <div className="border-t border-washi-dark pt-1.5 flex justify-between text-sm font-semibold">
-            <span className="text-sumi">Total</span>
-            <span className="text-beni">{fmt(pedido.total)}</span>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AcompanhamentoPedidos({ mesa, restauranteId, onVoltar, onNovoPedido }) {
-  // Busca os pedidos DIRETAMENTE do backend a cada 10 segundos.
-  // O backend já filtra pela sessão atual (ultima_liberacao),
-  // então é impossível mostrar pedidos de sessões anteriores.
+function AcompanhamentoPedidos({ mesa, restauranteId, onVoltar, onNovoPedido, onMesaLiberada }) {
   const { data, isLoading, refetch } = useQuery(
     ['pedidos-mesa', mesa, restauranteId],
     () => api.get(`/api/pedidos/mesa/${mesa}/ativos?restaurante=${restauranteId}`).then(r => r.data),
@@ -71,6 +39,13 @@ function AcompanhamentoPedidos({ mesa, restauranteId, onVoltar, onNovoPedido }) 
   )
 
   const pedidos = data?.pedidos || []
+
+  // Quando a lista ficar vazia (mesa liberada), avisa o componente pai
+  useEffect(() => {
+    if (data && pedidos.length === 0 && !isLoading) {
+      onMesaLiberada()
+    }
+  }, [pedidos.length, isLoading, data])
 
   return (
     <div className="min-h-screen bg-washi">
@@ -94,37 +69,65 @@ function AcompanhamentoPedidos({ mesa, restauranteId, onVoltar, onNovoPedido }) 
           </div>
         ) : pedidos.length === 0 ? (
           <div className="bg-white rounded-2xl p-6 text-center border border-washi-dark">
-            <p className="text-sm text-sumi/50">Nenhum pedido ativo nesta mesa.</p>
+            <p className="text-sm text-sumi/50 mb-4">A mesa foi liberada pelo restaurante.</p>
             <button onClick={onNovoPedido}
-              className="mt-4 bg-beni text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-beni-mid transition-colors text-sm">
-              Fazer pedido
+              className="bg-beni text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-beni-mid transition-colors text-sm">
+              Fazer novo pedido
             </button>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-medium uppercase tracking-widest text-sumi/50">
-                {pedidos.length} pedido(s) nesta mesa
+                {pedidos.length} pedido(s) nesta sessão
               </p>
               <button onClick={() => refetch()} className="text-[12px] text-beni hover:underline">
                 Atualizar
               </button>
             </div>
 
-            {pedidos.map(p => (
-              <PedidoCard key={p.id} pedido={p} />
-            ))}
+            {pedidos.map(p => {
+              const info = STATUS_INFO[p.status] || STATUS_INFO.recebido
+              const cor  = STATUS_COR[p.status]  || STATUS_COR.recebido
+              return (
+                <div key={p.id} className="bg-white rounded-2xl p-5 border border-washi-dark">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      {p.nome_cliente && <p className="text-sm font-semibold text-sumi">{p.nome_cliente}</p>}
+                      <p className="text-xs text-sumi/50 mt-0.5">{info.desc}</p>
+                    </div>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full border text-xs font-medium flex-shrink-0 ml-2 ${cor}`}>
+                      {info.label}
+                    </span>
+                  </div>
+                  {p.itens?.length > 0 && (
+                    <div className="bg-washi rounded-xl p-3 space-y-1.5">
+                      {p.itens.map((it, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-sumi">{it.quantidade}× {it.item_nome}</span>
+                          <span className="text-sumi/50">{fmt(it.preco_unitario * it.quantidade)}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-washi-dark pt-1.5 flex justify-between text-sm font-semibold">
+                        <span className="text-sumi">Total</span>
+                        <span className="text-beni">{fmt(p.total)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
 
             <p className="text-[11px] text-sumi/50 text-center pt-2">
               Atualiza automaticamente a cada 10 segundos
             </p>
+
+            <button onClick={onNovoPedido}
+              className="w-full bg-beni text-white py-3 rounded-xl font-bold hover:bg-beni-mid transition-colors">
+              Fazer novo pedido
+            </button>
           </>
         )}
-
-        <button onClick={onNovoPedido}
-          className="w-full bg-beni text-white py-3 rounded-xl font-bold hover:bg-beni-mid transition-colors">
-          Fazer novo pedido
-        </button>
       </main>
     </div>
   )
@@ -143,25 +146,15 @@ export default function CardapioPage() {
   const [enviando, setEnviando]           = useState(false)
   const [acordando, setAcordando]         = useState(false)
 
-  // Verifica se há pedidos ativos na mesa ao abrir o cardápio.
-  // Se houver, mostra automaticamente a tela de acompanhamento.
+  // Verifica se já existem pedidos ativos na mesa (útil ao reabrir o app)
   const { data: dadosMesa } = useQuery(
     ['pedidos-mesa-check', mesa, restauranteId],
     () => api.get(`/api/pedidos/mesa/${mesa}/ativos?restaurante=${restauranteId}`).then(r => r.data),
-    {
-      enabled:          !!restauranteId && !!mesa,
-      refetchInterval:  15000,
-      refetchOnWindowFocus: true,
-      onSuccess: (data) => {
-        // Se a mesa tem pedidos ativos e o cliente ainda não fechou a tela,
-        // atualiza o contador do botão automaticamente.
-      }
-    }
+    { enabled: !!restauranteId && !!mesa, refetchInterval: 15000, refetchOnWindowFocus: true }
   )
 
   const pedidosAtivos = dadosMesa?.pedidos || []
 
-  // ── Keep-alive: mantém o backend Render acordado ──────────────────────────
   useEffect(() => {
     const BACKEND = import.meta.env.VITE_API_URL || 'http://localhost:5000'
     const ping = () => fetch(`${BACKEND}/health`).catch(() => {})
@@ -190,6 +183,7 @@ export default function CardapioPage() {
         restauranteId={restauranteId}
         onVoltar={() => setMostraPedidos(false)}
         onNovoPedido={() => setMostraPedidos(false)}
+        onMesaLiberada={() => setMostraPedidos(false)}
       />
     )
   }
@@ -239,9 +233,9 @@ export default function CardapioPage() {
         },
         { timeout: 60000 }
       )
-
       setCarrinho([])
       setCarrinho2(false)
+      // Direciona para tela de status do pedido
       setMostraPedidos(true)
       toast.success('Pedido enviado!')
     } catch (err) {
@@ -277,10 +271,8 @@ export default function CardapioPage() {
           </div>
           <div className="flex items-center gap-2">
             {pedidosAtivos.length > 0 && (
-              <button
-                onClick={() => setMostraPedidos(true)}
-                className="relative text-xs border border-beni text-beni px-3 py-1.5 rounded-xl font-medium hover:bg-beni-soft transition-colors"
-              >
+              <button onClick={() => setMostraPedidos(true)}
+                className="relative text-xs border border-beni text-beni px-3 py-1.5 rounded-xl font-medium hover:bg-beni-soft transition-colors">
                 Meus pedidos
                 <span className="absolute -top-2 -right-2 bg-beni text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
                   {pedidosAtivos.length}
@@ -304,7 +296,7 @@ export default function CardapioPage() {
             value={nomeCliente}
             onChange={e => setNomeCliente(e.target.value)}
             placeholder="Seu nome (obrigatório para o pedido)"
-            className="w-full bg-washi border border-washi-dark rounded-xl px-4 py-2.5 text-sm text-sumi outline-none focus:ring-2 focus:ring-beni placeholder:text-sumi/50/60"
+            className="w-full bg-washi border border-washi-dark rounded-xl px-4 py-2.5 text-sm text-sumi outline-none focus:ring-2 focus:ring-beni placeholder:text-sumi/50"
           />
         </div>
 
@@ -394,7 +386,6 @@ export default function CardapioPage() {
               <h2 className="font-semibold text-lg text-sumi">Meu Pedido</h2>
               <button onClick={() => setCarrinho2(false)} className="text-sumi/50 hover:text-sumi text-2xl leading-none">✕</button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {carrinho.length === 0 ? (
                 <p className="text-center text-sumi/50 py-6 text-sm">Nenhum item no carrinho</p>
@@ -415,7 +406,6 @@ export default function CardapioPage() {
                 ))
               )}
             </div>
-
             {carrinho.length > 0 && (
               <div className="p-4 border-t border-washi-dark space-y-3">
                 <div className="flex justify-between font-bold text-base">

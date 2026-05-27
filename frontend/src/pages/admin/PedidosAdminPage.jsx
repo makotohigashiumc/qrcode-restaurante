@@ -64,20 +64,9 @@ function RelatorioModal({ mesa, onClose }) {
     <div className="fixed inset-0 bg-sumi/60 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col border border-washi-dark">
         <div className="flex items-center justify-between p-4 border-b border-washi-mid">
-          <div>
-            <h2 className="font-display text-[18px] text-sumi">Relatório — Mesa {mesa}</h2>
-            {data?.sessao_desde && (
-              <p className="text-[11px] text-sumi/50 mt-0.5">
-                Sessão desde {new Date(data.sessao_desde).toLocaleString('pt-BR')}
-              </p>
-            )}
-            {!data?.sessao_desde && data && (
-              <p className="text-[11px] text-sumi/50 mt-0.5">Mesa nunca liberada — mostrando todos os pedidos</p>
-            )}
-          </div>
+          <h2 className="font-display text-[18px] text-sumi">Relatório — Mesa {mesa}</h2>
           <button onClick={onClose} className="text-sumi/50 hover:text-sumi">✕</button>
         </div>
-
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {isLoading ? (
             <div className="flex justify-center py-8">
@@ -112,7 +101,6 @@ function RelatorioModal({ mesa, onClose }) {
             </>
           )}
         </div>
-
         <div className="p-4 border-t border-washi-mid flex gap-2">
           <button onClick={imprimir}
             className="flex-1 bg-beni hover:bg-beni-mid text-white py-2.5 rounded-lg text-[13px] font-medium transition-colors">
@@ -131,9 +119,9 @@ function RelatorioModal({ mesa, onClose }) {
 export default function PedidosAdminPage() {
   const qc = useQueryClient()
   const [filtro, setFiltro]     = useState('todos')
-  const [viewMode, setViewMode] = useState('mesas')   // 'lista' | 'mesas'
+  const [viewMode, setViewMode] = useState('mesas')
   const [detalhe, setDetalhe]   = useState(null)
-  const [dataFiltro, setData]   = useState(hoje())    // filtro por dia
+  const [dataFiltro, setData]   = useState(hoje())
   const [relatorioMesa, setRel] = useState(null)
 
   const { data: pedidos = [], isLoading, isError, error, refetch } = useQuery(
@@ -146,7 +134,7 @@ export default function PedidosAdminPage() {
       if (params.length)      url += '?' + params.join('&')
       return api.get(url).then(r => r.data)
     },
-    { refetchInterval: 20000, retry: 3, retryDelay: attemptIndex => Math.min(2000 * 2 ** attemptIndex, 10000) }
+    { refetchInterval: 20000, retry: 3 }
   )
 
   useEffect(() => {
@@ -178,8 +166,6 @@ export default function PedidosAdminPage() {
     (mesa) => api.post(`/api/pedidos/mesa/${mesa}/liberar`),
     {
       onSuccess: (_, mesa) => {
-        // Invalida TODOS os caches de pedidos e relatórios para garantir
-        // que a interface reflita o estado pós-liberação imediatamente.
         qc.invalidateQueries('pedidos')
         qc.invalidateQueries('relatorio-mesa')
         toast.success(`Mesa ${mesa} liberada!`)
@@ -202,7 +188,7 @@ export default function PedidosAdminPage() {
     { key: 'cancelado',  label: 'Cancelados' },
   ]
 
-  // Agrupa por mesa para a view de mesas
+  // Agrupa todos os pedidos por mesa (incluindo histórico)
   const porMesa = pedidos.reduce((acc, p) => {
     const key = `Mesa ${p.mesa_numero}`
     if (!acc[key]) acc[key] = { mesa: p.mesa_numero, pedidos: [] }
@@ -212,15 +198,12 @@ export default function PedidosAdminPage() {
 
   return (
     <div className="p-7 max-w-5xl mx-auto">
-
-      {/* Cabeçalho */}
       <div className="flex items-end justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="font-display text-[22px] text-sumi">Pedidos</h1>
           <p className="text-[12px] text-sumi/50">{pedidos.length} pedido(s)</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Filtro de data */}
           <input
             type="date"
             value={dataFiltro}
@@ -231,7 +214,6 @@ export default function PedidosAdminPage() {
             className="text-[12px] text-sumi/50 hover:text-sumi border border-washi-dark px-3 py-2 rounded-lg transition-colors">
             Todos os dias
           </button>
-          {/* Toggle view */}
           <div className="flex border border-washi-dark rounded-lg overflow-hidden">
             <button onClick={() => setViewMode('lista')}
               className={`px-3 py-2 text-[12px] transition-colors ${viewMode === 'lista' ? 'bg-sumi text-washi' : 'text-sumi/50 hover:bg-washi'}`}>
@@ -247,14 +229,11 @@ export default function PedidosAdminPage() {
 
       {isError && (
         <div className="bg-white border border-washi-dark rounded-xl p-4 mb-4">
-          <p className="text-[13px] font-medium text-sumi">
-            {error?.response?.status === 503 ? 'Banco indisponível' : !error?.response ? 'Servidor offline' : 'Erro ao carregar pedidos'}
-          </p>
+          <p className="text-[13px] font-medium text-sumi">Erro ao carregar pedidos</p>
           <button onClick={() => refetch()} className="mt-1 text-[12px] text-beni hover:underline">Tentar novamente</button>
         </div>
       )}
 
-      {/* Filtros de status */}
       <div className="flex gap-1.5 mb-5 flex-wrap">
         {FILTROS.map(f => (
           <button key={f.key} onClick={() => setFiltro(f.key)}
@@ -271,19 +250,17 @@ export default function PedidosAdminPage() {
         </div>
       ) : viewMode === 'mesas' ? (
 
-        /* ── View por mesa ── */
+        // ── View por mesa ──
         <div className="space-y-6">
           {Object.values(porMesa).length === 0 ? (
             <div className="text-center py-16 text-sumi/50 text-[13px]">Nenhum pedido encontrado.</div>
           ) : Object.values(porMesa).map(({ mesa, pedidos: mp }) => {
-            const totalMesa = mp.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.total, 0)
 
-            // "Liberar mesa" só aparece se houver pedidos que ainda não foram
-            // entregues nem cancelados — ou seja, pedidos que ainda precisam
-            // de ação. Após liberar, o backend move tudo para "entregue" e
-            // grava ultima_liberacao; na próxima query esses pedidos somem
-            // da listagem, então o botão desaparece naturalmente.
-            const temPendentes = mp.length > 0
+            // sessao_ativa = true se ao menos 1 pedido pertence à sessão atual
+            const temSessaoAtiva = mp.some(p => p.sessao_ativa)
+            const totalSessaoAtual = mp
+              .filter(p => p.sessao_ativa && p.status !== 'cancelado')
+              .reduce((s, p) => s + p.total, 0)
 
             return (
               <div key={mesa} className="bg-white border border-washi-dark rounded-xl overflow-hidden">
@@ -295,7 +272,11 @@ export default function PedidosAdminPage() {
                     </div>
                     <div>
                       <p className="text-[14px] font-medium text-sumi">Mesa {mesa}</p>
-                      <p className="text-[11px] text-sumi/50">{mp.length} pedido(s) — Total: {fmt(totalMesa)}</p>
+                      <p className="text-[11px] text-sumi/50">
+                        {temSessaoAtiva
+                          ? `Sessão ativa — ${fmt(totalSessaoAtual)}`
+                          : 'Atendimento encerrado'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -303,10 +284,10 @@ export default function PedidosAdminPage() {
                       className="text-[11px] bg-washi-mid hover:bg-washi-dark text-sumi/50 px-2.5 py-1.5 rounded-lg transition-colors">
                       Relatório
                     </button>
-                    {/* Botão só aparece enquanto houver pedidos pendentes */}
-                    {temPendentes && (
+                    {/* Botão "Liberar mesa" só aparece enquanto houver sessão ativa */}
+                    {temSessaoAtiva && (
                       <button
-                        onClick={() => { if (confirm(`Liberar Mesa ${mesa}? Todos os pedidos serão marcados como entregue.`)) liberarMesa.mutate(mesa) }}
+                        onClick={() => { if (confirm(`Liberar Mesa ${mesa}? Todos os pedidos pendentes serão marcados como entregue.`)) liberarMesa.mutate(mesa) }}
                         disabled={liberarMesa.isLoading}
                         className="text-[11px] bg-green-500 hover:bg-green-600 text-white px-2.5 py-1.5 rounded-lg transition-colors font-medium disabled:opacity-50">
                         Liberar mesa
@@ -315,7 +296,7 @@ export default function PedidosAdminPage() {
                   </div>
                 </div>
 
-                {/* Pedidos da mesa agrupados por cliente */}
+                {/* Pedidos agrupados por cliente */}
                 {Object.entries(
                   mp.reduce((acc, p) => {
                     const k = p.nome_cliente || 'Sem nome'
@@ -330,9 +311,10 @@ export default function PedidosAdminPage() {
                     </div>
                     {peds.map(p => {
                       const cfg     = STATUS[p.status] || STATUS.recebido
-                      const proximo = PROXIMO[p.status]
+                      const proximo = p.sessao_ativa ? PROXIMO[p.status] : null
                       return (
-                        <div key={p.id} className={`border-l-4 ${cfg.border} px-4 py-2.5 flex items-center gap-3`}>
+                        <div key={p.id}
+                          className={`border-l-4 ${cfg.border} px-4 py-2.5 flex items-center gap-3 ${!p.sessao_ativa ? 'opacity-50' : ''}`}>
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap gap-1">
                               {(p.itens || []).map((it, i) => (
@@ -341,7 +323,10 @@ export default function PedidosAdminPage() {
                                 </span>
                               ))}
                             </div>
-                            <p className="text-[10px] text-sumi/50 mt-0.5">{fmtTime(p.criado_em)}</p>
+                            <p className="text-[10px] text-sumi/50 mt-0.5">
+                              {fmtTime(p.criado_em)}
+                              {!p.sessao_ativa && <span className="ml-1 text-sumi/30">(histórico)</span>}
+                            </p>
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <span className="text-[13px] font-medium text-sumi">{fmt(p.total)}</span>
@@ -365,46 +350,14 @@ export default function PedidosAdminPage() {
 
       ) : (
 
-        /* ── View lista ── */
-        <div className="space-y-4">
-          {/* Resumo de mesas com pedidos pendentes — botão liberar */}
-          {(() => {
-            const mesasPendentes = {}
-            pedidos.forEach(p => {
-              if (!mesasPendentes[p.mesa_numero]) mesasPendentes[p.mesa_numero] = 0
-              mesasPendentes[p.mesa_numero]++
-            })
-            const nums = Object.keys(mesasPendentes).map(Number).sort((a,b) => a-b)
-            if (nums.length === 0) return null
-            return (
-              <div className="bg-white border border-washi-dark rounded-xl p-3 flex flex-wrap gap-2 items-center">
-                <span className="text-[11px] font-medium uppercase tracking-widest text-sumi/50 mr-1">Mesas com pedidos:</span>
-                {nums.map(n => (
-                  <div key={n} className="flex items-center gap-1.5">
-                    <span className="text-[12px] font-medium text-sumi bg-washi px-2 py-1 rounded-lg">
-                      Mesa {n} ({mesasPendentes[n]})
-                    </span>
-                    <button
-                      onClick={() => { if (confirm(`Liberar Mesa ${n}? Todos os pedidos serão marcados como entregue.`)) liberarMesa.mutate(n) }}
-                      disabled={liberarMesa.isLoading}
-                      className="text-[11px] bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-lg transition-colors font-medium disabled:opacity-50">
-                      Liberar
-                    </button>
-                    <button onClick={() => setRel(n)}
-                      className="text-[11px] bg-washi-mid hover:bg-washi-dark text-sumi/50 px-2 py-1 rounded-lg transition-colors">
-                      Relatório
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )
-          })()}
-          <div className="space-y-2">
+        // ── View lista ──
+        <div className="space-y-2">
           {pedidos.map(p => {
             const cfg     = STATUS[p.status] || STATUS.recebido
-            const proximo = PROXIMO[p.status]
+            const proximo = p.sessao_ativa ? PROXIMO[p.status] : null
             return (
-              <div key={p.id} className={`bg-white border-l-4 border border-washi-dark rounded-xl overflow-hidden ${cfg.border}`}>
+              <div key={p.id}
+                className={`bg-white border-l-4 border border-washi-dark rounded-xl overflow-hidden ${cfg.border} ${!p.sessao_ativa ? 'opacity-60' : ''}`}>
                 <div className="flex items-center gap-3 px-4 py-3">
                   <div className="w-9 h-9 rounded-lg bg-washi-mid flex items-center justify-center text-[11px] font-medium text-sumi/50 flex-shrink-0">
                     M{p.mesa_numero}
@@ -413,6 +366,7 @@ export default function PedidosAdminPage() {
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="text-[13px] font-medium text-sumi">{p.nome_cliente}</span>
                       <span className="text-[11px] text-sumi/50">{fmtTime(p.criado_em)}</span>
+                      {!p.sessao_ativa && <span className="text-[10px] text-sumi/30 bg-washi-mid px-1.5 py-0.5 rounded">histórico</span>}
                       {dataFiltro === '' && (
                         <span className="text-[10px] text-sumi/50 bg-washi-mid px-1.5 py-0.5 rounded">{fmtDate(p.criado_em)}</span>
                       )}
@@ -440,7 +394,7 @@ export default function PedidosAdminPage() {
                         {PROXIMO_LABEL[p.status]}
                       </button>
                     )}
-                    {!['cancelado','entregue'].includes(p.status) && (
+                    {p.sessao_ativa && !['cancelado','entregue'].includes(p.status) && (
                       <button onClick={() => cancelar(p.id)}
                         className="text-[11px] text-red-500 hover:bg-red-50 px-2 py-1.5 rounded-lg transition-colors">
                         ✕
@@ -448,7 +402,6 @@ export default function PedidosAdminPage() {
                     )}
                   </div>
                 </div>
-
                 {detalhe?.id === p.id && (
                   <div className="border-t border-washi-mid bg-washi px-5 py-4">
                     <table className="w-full text-[12px]">
@@ -460,7 +413,7 @@ export default function PedidosAdminPage() {
                           <th className="text-right pb-2">Subtotal</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-creme-3">
+                      <tbody className="divide-y divide-washi-mid">
                         {(p.itens || []).map((it, i) => (
                           <tr key={i}>
                             <td className="py-1.5 font-medium text-sumi">{it.item_nome || it.nome}</td>
@@ -485,11 +438,9 @@ export default function PedidosAdminPage() {
           {pedidos.length === 0 && (
             <div className="text-center py-16 text-sumi/50 text-[13px]">Nenhum pedido encontrado.</div>
           )}
-          </div>
         </div>
       )}
 
-      {/* Modal relatório */}
       {relatorioMesa && (
         <RelatorioModal mesa={relatorioMesa} onClose={() => setRel(null)} />
       )}
