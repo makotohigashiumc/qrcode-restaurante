@@ -1,43 +1,38 @@
--- ============================================================
 -- qrcode-restaurante | Schema PostgreSQL (Supabase)
 -- Execute este script no SQL Editor do Supabase
--- ============================================================
 
--- Extensão para UUID
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ============================================================
--- TABELA: restaurantes
--- ============================================================
+-- Tabela: restaurantes
 CREATE TABLE IF NOT EXISTS restaurantes (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome        VARCHAR(150) NOT NULL,
-    email       VARCHAR(200) NOT NULL UNIQUE,
-    senha_hash  VARCHAR(255) NOT NULL,
-    telefone    VARCHAR(20),
-    cep         VARCHAR(9),
-    cidade      VARCHAR(100),
-    estado      VARCHAR(2),
-    logradouro  VARCHAR(200),
-    bairro      VARCHAR(100),
-    criado_em   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nome                VARCHAR(150) NOT NULL,
+    email               VARCHAR(200) NOT NULL UNIQUE,
+    senha_hash          VARCHAR(255) NOT NULL,
+    telefone            VARCHAR(20),
+    cep                 VARCHAR(9),
+    cidade              VARCHAR(100),
+    estado              VARCHAR(2),
+    logradouro          VARCHAR(200),
+    bairro              VARCHAR(100),
+    email_verificado    BOOLEAN NOT NULL DEFAULT FALSE,
+    token_verificacao   VARCHAR(64),
+    token_verif_expira  TIMESTAMPTZ,
+    criado_em           TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================================
--- TABELA: mesas
--- ============================================================
+-- Tabela: mesas
 CREATE TABLE IF NOT EXISTS mesas (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    restaurante_id  UUID NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
-    numero          INTEGER NOT NULL,
-    qr_code         TEXT,
-    ativa           BOOLEAN DEFAULT TRUE,
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    restaurante_id    UUID NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
+    numero            INTEGER NOT NULL,
+    qr_code           TEXT,
+    ativa             BOOLEAN DEFAULT TRUE,
+    ultima_liberacao  TIMESTAMPTZ,
     UNIQUE(restaurante_id, numero)
 );
 
--- ============================================================
--- TABELA: categorias
--- ============================================================
+-- Tabela: categorias
 CREATE TABLE IF NOT EXISTS categorias (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     restaurante_id  UUID NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
@@ -45,9 +40,10 @@ CREATE TABLE IF NOT EXISTS categorias (
     ordem           INTEGER DEFAULT 0
 );
 
--- ============================================================
--- TABELA: itens_cardapio
--- ============================================================
+CREATE UNIQUE INDEX IF NOT EXISTS uq_categorias_restaurante_nome_norm
+    ON categorias (restaurante_id, (LOWER(TRIM(nome))));
+
+-- Tabela: itens_cardapio
 CREATE TABLE IF NOT EXISTS itens_cardapio (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     restaurante_id  UUID NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
@@ -56,12 +52,11 @@ CREATE TABLE IF NOT EXISTS itens_cardapio (
     descricao       TEXT,
     preco           NUMERIC(10,2) NOT NULL,
     imagem_url      TEXT,
-    disponivel      BOOLEAN DEFAULT TRUE
+    disponivel      BOOLEAN DEFAULT TRUE,
+    deletado_em     TIMESTAMPTZ
 );
 
--- ============================================================
--- TABELA: pedidos
--- ============================================================
+-- Tabela: pedidos
 CREATE TABLE IF NOT EXISTS pedidos (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     mesa_id         UUID NOT NULL REFERENCES mesas(id) ON DELETE CASCADE,
@@ -74,34 +69,36 @@ CREATE TABLE IF NOT EXISTS pedidos (
     atualizado_em   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================================
--- TABELA: itens_pedido
--- ============================================================
+-- Tabela: itens_pedido
 CREATE TABLE IF NOT EXISTS itens_pedido (
-    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    pedido_id           UUID NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
-    item_cardapio_id    UUID NOT NULL REFERENCES itens_cardapio(id),
-    quantidade          INTEGER NOT NULL DEFAULT 1,
-    preco_unitario      NUMERIC(10,2) NOT NULL,
-    observacao          TEXT
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pedido_id         UUID NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+    item_cardapio_id  UUID NOT NULL REFERENCES itens_cardapio(id),
+    quantidade        INTEGER NOT NULL DEFAULT 1,
+    preco_unitario    NUMERIC(10,2) NOT NULL,
+    observacao        TEXT
 );
 
--- ============================================================
--- ÍNDICES
--- ============================================================
-CREATE INDEX IF NOT EXISTS idx_mesas_restaurante ON mesas(restaurante_id);
-CREATE INDEX IF NOT EXISTS idx_categorias_restaurante ON categorias(restaurante_id);
--- Evita categorias duplicadas por restaurante (case/whitespace-insensitive)
-CREATE UNIQUE INDEX IF NOT EXISTS uq_categorias_restaurante_nome_norm
-    ON categorias (restaurante_id, (LOWER(TRIM(nome))));
-CREATE INDEX IF NOT EXISTS idx_itens_restaurante ON itens_cardapio(restaurante_id);
-CREATE INDEX IF NOT EXISTS idx_pedidos_mesa ON pedidos(mesa_id);
-CREATE INDEX IF NOT EXISTS idx_pedidos_restaurante ON pedidos(restaurante_id);
-CREATE INDEX IF NOT EXISTS idx_itens_pedido_pedido ON itens_pedido(pedido_id);
+-- Tabela: tokens_recuperacao
+CREATE TABLE IF NOT EXISTS tokens_recuperacao (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    restaurante_id  UUID NOT NULL REFERENCES restaurantes(id) ON DELETE CASCADE,
+    token           VARCHAR(64) NOT NULL UNIQUE,
+    expira_em       TIMESTAMPTZ NOT NULL,
+    usado           BOOLEAN NOT NULL DEFAULT FALSE,
+    criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- ============================================================
--- TRIGGER: atualiza atualizado_em em pedidos
--- ============================================================
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_mesas_restaurante       ON mesas(restaurante_id);
+CREATE INDEX IF NOT EXISTS idx_categorias_restaurante  ON categorias(restaurante_id);
+CREATE INDEX IF NOT EXISTS idx_itens_restaurante       ON itens_cardapio(restaurante_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_mesa            ON pedidos(mesa_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_restaurante     ON pedidos(restaurante_id);
+CREATE INDEX IF NOT EXISTS idx_itens_pedido_pedido     ON itens_pedido(pedido_id);
+CREATE INDEX IF NOT EXISTS idx_tokens_rec_token        ON tokens_recuperacao(token) WHERE usado = FALSE;
+
+-- Trigger: atualiza atualizado_em em pedidos
 CREATE OR REPLACE FUNCTION atualiza_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
