@@ -16,9 +16,7 @@ from app import create_app, socketio
 app = create_app()
 
 
-# ──────────────────────────────────────────────────────────────
 # Cleanup de conexões no encerramento do processo
-# ──────────────────────────────────────────────────────────────
 # Quando o servidor é parado com Ctrl+C ou SIGTERM (Render, Docker),
 # as conexões pg8000 abertas em g._db_conn ficam "penduradas" no
 # Supabase Session Pooler até o timeout do servidor (≈ 5–10 min).
@@ -46,9 +44,7 @@ except (OSError, ValueError):
     pass
 
 
-# ──────────────────────────────────────────────────────────────
 # Entrada principal
-# ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))

@@ -7,7 +7,7 @@ from app.database import execute_query
 cardapio_bp = Blueprint("cardapio", __name__, url_prefix="/api")
 
 
-# ─── PÚBLICO ────────────────────────────────────────────────
+# PÚBLICO
 
 @cardapio_bp.get("/cardapio/<restaurante_id>")
 def get_cardapio(restaurante_id):
@@ -47,7 +47,7 @@ def get_cardapio(restaurante_id):
     return jsonify(resultado)
 
 
-# ─── ADMIN — Categorias ──────────────────────────────────────
+# ADMIN — Categorias
 
 @cardapio_bp.get("/admin/categorias")
 @requer_auth
@@ -87,7 +87,7 @@ def deletar_categoria(cat_id):
     return jsonify({"ok": True})
 
 
-# ─── ADMIN — Itens ───────────────────────────────────────────
+# ADMIN — Itens
 
 @cardapio_bp.get("/admin/itens")
 @requer_auth
@@ -174,7 +174,7 @@ def deletar_item(item_id):
         return jsonify({"ok": True})
 
 
-# ─── ADMIN — Upload de imagem ────────────────────────────────
+# ADMIN — Upload de imagem
 
 @cardapio_bp.post("/admin/itens/upload-imagem")
 @requer_auth

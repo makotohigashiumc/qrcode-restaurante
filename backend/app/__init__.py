@@ -42,7 +42,7 @@ def create_app():
     socketio.init_app(app)
     init_socketio(socketio)
 
-    # ── Serve imagens enviadas pelo admin ────────────────────
+    # Serve imagens enviadas pelo admin
     UPLOAD_DIR = os.path.join(os.path.dirname(app.root_path), "uploads")
 
     @app.get("/uploads/<path:filename>")

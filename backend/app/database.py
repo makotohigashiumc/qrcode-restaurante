@@ -14,9 +14,7 @@ _DATABASE_URL = os.getenv("DATABASE_URL")
 _PG8000_PORT_OVERRIDE = None
 
 
-# ──────────────────────────────────────────────────────────────
 # Exceção pública: banco fora do ar ou pool esgotado
-# ──────────────────────────────────────────────────────────────
 
 class DatabaseUnavailable(Exception):
     """Banco indisponível ou pool de conexões esgotado.
@@ -25,9 +23,7 @@ class DatabaseUnavailable(Exception):
     """
 
 
-# ──────────────────────────────────────────────────────────────
 # Utilitários internos
-# ──────────────────────────────────────────────────────────────
 
 def _require_db_url():
     if not _DATABASE_URL:
@@ -39,9 +35,7 @@ def _rows_to_dicts(cursor, rows):
     return [dict(zip(cols, r)) for r in rows]
 
 
-# ──────────────────────────────────────────────────────────────
 # Classificadores de erro
-# ──────────────────────────────────────────────────────────────
 
 def _is_pool_exhausted(exc: Exception) -> bool:
     """Detecta erros de pool cheio (EMAXCONNSESSION / EMAXCONN).
@@ -107,9 +101,7 @@ def _should_retry(exc: Exception) -> bool:
     return _is_transient_db_error(exc) and not _is_timeout_like_error(exc)
 
 
-# ──────────────────────────────────────────────────────────────
 # Drivers de conexão
-# ──────────────────────────────────────────────────────────────
 
 def _build_ssl_context(sslmode: str):
     """Monta SSLContext tolerante para Supabase (não valida CA — padrão libpq require)."""
@@ -183,9 +175,7 @@ def _connect_psycopg2(url: str):
     return psycopg2.connect(url, cursor_factory=RealDictCursor)
 
 
-# ──────────────────────────────────────────────────────────────
 # Gestão de conexão por request
-# ──────────────────────────────────────────────────────────────
 
 def get_connection():
     """Retorna uma conexão PostgreSQL.
@@ -199,13 +189,13 @@ def get_connection():
     """
     _require_db_url()
 
-    # ── Reutilizar conexão aberta neste request ──────────────
+    # Reutilizar conexão aberta neste request
     if has_request_context():
         conn = getattr(g, "_db_conn", None)
         if conn is not None:
             return conn
 
-    # ── Abrir nova conexão ────────────────────────────────────
+    # Abrir nova conexão
     global _PG8000_PORT_OVERRIDE
     conn = None
 
@@ -257,7 +247,7 @@ def get_connection():
             raise DatabaseUnavailable("Banco indisponível") from exc
         raise
 
-    # ── Guardar no contexto do request ───────────────────────
+    # Guardar no contexto do request
     if has_request_context():
         g._db_conn = conn
 
@@ -295,9 +285,7 @@ def _reset_request_conn(conn=None):
             pass
 
 
-# ──────────────────────────────────────────────────────────────
 # API pública: execute_query / execute_write
-# ──────────────────────────────────────────────────────────────
 
 def execute_query(sql: str, params=None, fetchone: bool = False):
     """Executa SELECT e retorna lista de dicts (ou dict único se fetchone=True)."""
