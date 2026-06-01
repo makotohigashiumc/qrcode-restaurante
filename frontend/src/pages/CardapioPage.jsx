@@ -170,6 +170,16 @@ export default function CardapioPage() {
     return () => clearInterval(id)
   }, [])
 
+  const { data: categorias = [], isLoading, isError, error, refetch } = useQuery(
+    ['cardapio', restauranteId],
+    () => api.get(`/api/cardapio/${restauranteId}`).then(r => r.data),
+    { staleTime: 1000 * 60 * 5, retry: 3, enabled: !!restauranteId }
+  )
+
+  useEffect(() => {
+    if (categorias.length && !categoriaAtiva) setCat(String(categorias[0]?.id || ''))
+  }, [categorias])
+
   if (!restauranteId) {
     return (
       <div className="min-h-screen bg-washi flex items-center justify-center p-4">
@@ -193,16 +203,6 @@ export default function CardapioPage() {
       />
     )
   }
-
-  const { data: categorias = [], isLoading, isError, error, refetch } = useQuery(
-    ['cardapio', restauranteId],
-    () => api.get(`/api/cardapio/${restauranteId}`).then(r => r.data),
-    { staleTime: 1000 * 60 * 5, retry: 3 }
-  )
-
-  useEffect(() => {
-    if (categorias.length && !categoriaAtiva) setCat(String(categorias[0]?.id || ''))
-  }, [categorias])
 
   const totalItens = carrinho.reduce((s, i) => s + i.quantidade, 0)
   const subtotal   = carrinho.reduce((s, i) => s + i.preco * i.quantidade, 0)
