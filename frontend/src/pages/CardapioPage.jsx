@@ -26,8 +26,7 @@ const STATUS_COR = {
   cancelado:  'bg-red-50 text-red-600 border-red-200',
 }
 
-function PedidoCard({ pedido, refetchKey, onRefetch }) {
-  // Usa os dados já carregados — não precisa fazer nova requisição
+function PedidoCard({ pedido }) {
   const info = STATUS_INFO[pedido?.status] || STATUS_INFO.recebido
   const cor  = STATUS_COR[pedido?.status]  || STATUS_COR.recebido
 
@@ -61,9 +60,6 @@ function PedidoCard({ pedido, refetchKey, onRefetch }) {
 }
 
 function AcompanhamentoPedidos({ mesa, restauranteId, onVoltar, onNovoPedido }) {
-  // Busca os pedidos DIRETAMENTE do backend a cada 10 segundos.
-  // O backend já filtra pela sessão atual (ultima_liberacao),
-  // então é impossível mostrar pedidos de sessões anteriores.
   const { data, isLoading, refetch } = useQuery(
     ['pedidos-mesa', mesa, restauranteId],
     () => api.get(`/api/pedidos/mesa/${mesa}/ativos?restaurante=${restauranteId}`).then(r => r.data),
@@ -110,17 +106,14 @@ function AcompanhamentoPedidos({ mesa, restauranteId, onVoltar, onNovoPedido }) 
                 Atualizar
               </button>
             </div>
-
             {pedidos.map(p => (
               <PedidoCard key={p.id} pedido={p} />
             ))}
-
             <p className="text-[11px] text-sumi/50 text-center pt-2">
               Atualiza automaticamente a cada 10 segundos
             </p>
           </>
         )}
-
         <button onClick={onNovoPedido}
           className="w-full bg-beni text-white py-3 rounded-xl font-bold hover:bg-beni-mid transition-colors">
           Fazer novo pedido
@@ -134,6 +127,7 @@ export default function CardapioPage() {
   const [params]      = useSearchParams()
   const mesa          = params.get('mesa') || '1'
   const restauranteId = params.get('restaurante') || RESTAURANTE_ID
+  const tokenUrl      = params.get('token') || null
 
   const [carrinho, setCarrinho]           = useState([])
   const [nomeCliente, setNomeCliente]     = useState('')
@@ -142,26 +136,31 @@ export default function CardapioPage() {
   const [mostraPedidos, setMostraPedidos] = useState(false)
   const [enviando, setEnviando]           = useState(false)
   const [acordando, setAcordando]         = useState(false)
+  const [tokenInvalido, setTokenInvalido] = useState(false)
 
-  // Verifica se há pedidos ativos na mesa ao abrir o cardápio.
-  // Se houver, mostra automaticamente a tela de acompanhamento.
-  const { data: dadosMesa } = useQuery(
-    ['pedidos-mesa-check', mesa, restauranteId],
-    () => api.get(`/api/pedidos/mesa/${mesa}/ativos?restaurante=${restauranteId}`).then(r => r.data),
+  // Valida o token do QR Code ao carregar
+  useQuery(
+    ['verificar-mesa', mesa, restauranteId, tokenUrl],
+    () => api.get(`/api/mesas/verificar?restaurante=${restauranteId}&numero=${mesa}&token=${tokenUrl}`).then(r => r.data),
     {
-      enabled:          !!restauranteId && !!mesa,
-      refetchInterval:  15000,
-      refetchOnWindowFocus: true,
-      onSuccess: (data) => {
-        // Se a mesa tem pedidos ativos e o cliente ainda não fechou a tela,
-        // atualiza o contador do botão automaticamente.
+      enabled: !!restauranteId && !!mesa && !!tokenUrl,
+      retry: false,
+      onError: (err) => {
+        if (err?.response?.status === 403) {
+          setTokenInvalido(true)
+        }
       }
     }
   )
 
+  const { data: dadosMesa } = useQuery(
+    ['pedidos-mesa-check', mesa, restauranteId],
+    () => api.get(`/api/pedidos/mesa/${mesa}/ativos?restaurante=${restauranteId}`).then(r => r.data),
+    { enabled: !!restauranteId && !!mesa, refetchInterval: 15000, refetchOnWindowFocus: true }
+  )
+
   const pedidosAtivos = dadosMesa?.pedidos || []
 
-  // Mantém conexão ativa com o servidor
   useEffect(() => {
     const BACKEND = import.meta.env.VITE_API_URL || 'http://localhost:5000'
     const ping = () => fetch(`${BACKEND}/health`).catch(() => {})
@@ -187,6 +186,19 @@ export default function CardapioPage() {
           <h2 className="text-xl font-semibold text-sumi mb-2">Escaneie o QR Code</h2>
           <p className="text-sm text-sumi/50">
             Para acessar o cardápio, aponte a câmera do seu celular para o QR Code disponível na mesa.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (tokenInvalido) {
+    return (
+      <div className="min-h-screen bg-washi flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-10 max-w-sm w-full text-center border border-washi-dark">
+          <h2 className="text-xl font-semibold text-sumi mb-2">QR Code expirado</h2>
+          <p className="text-sm text-sumi/50">
+            Este QR Code não é mais válido. Escaneie o QR Code atual disponível na mesa.
           </p>
         </div>
       </div>
@@ -239,7 +251,6 @@ export default function CardapioPage() {
         },
         { timeout: 60000 }
       )
-
       setCarrinho([])
       setCarrinho2(false)
       setMostraPedidos(true)
@@ -277,10 +288,8 @@ export default function CardapioPage() {
           </div>
           <div className="flex items-center gap-2">
             {pedidosAtivos.length > 0 && (
-              <button
-                onClick={() => setMostraPedidos(true)}
-                className="relative text-xs border border-beni text-beni px-3 py-1.5 rounded-xl font-medium hover:bg-beni-soft transition-colors"
-              >
+              <button onClick={() => setMostraPedidos(true)}
+                className="relative text-xs border border-beni text-beni px-3 py-1.5 rounded-xl font-medium hover:bg-beni-soft transition-colors">
                 Meus pedidos
                 <span className="absolute -top-2 -right-2 bg-beni text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
                   {pedidosAtivos.length}
@@ -304,7 +313,7 @@ export default function CardapioPage() {
             value={nomeCliente}
             onChange={e => setNomeCliente(e.target.value)}
             placeholder="Seu nome (obrigatório para o pedido)"
-            className="w-full bg-washi border border-washi-dark rounded-xl px-4 py-2.5 text-sm text-sumi outline-none focus:ring-2 focus:ring-beni placeholder:text-sumi/50/60"
+            className="w-full bg-washi border border-washi-dark rounded-xl px-4 py-2.5 text-sm text-sumi outline-none focus:ring-2 focus:ring-beni placeholder:text-sumi/50"
           />
         </div>
 
@@ -394,28 +403,24 @@ export default function CardapioPage() {
               <h2 className="font-semibold text-lg text-sumi">Meu Pedido</h2>
               <button onClick={() => setCarrinho2(false)} className="text-sumi/50 hover:text-sumi text-2xl leading-none">✕</button>
             </div>
-
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {carrinho.length === 0 ? (
                 <p className="text-center text-sumi/50 py-6 text-sm">Nenhum item no carrinho</p>
-              ) : (
-                carrinho.map(item => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-sumi">{item.nome}</p>
-                      <p className="text-xs text-beni">{fmt(item.preco)} × {item.quantidade}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => remover(item.id)} className="w-6 h-6 rounded-full bg-washi-mid text-xs font-bold hover:bg-washi-dark">−</button>
-                      <span className="text-sm font-bold w-4 text-center text-sumi">{item.quantidade}</span>
-                      <button onClick={() => adicionar(item)} className="w-6 h-6 rounded-full bg-washi-mid text-xs font-bold hover:bg-washi-dark">+</button>
-                    </div>
-                    <span className="text-sm font-semibold w-20 text-right text-sumi">{fmt(item.preco * item.quantidade)}</span>
+              ) : carrinho.map(item => (
+                <div key={item.id} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-sumi">{item.nome}</p>
+                    <p className="text-xs text-beni">{fmt(item.preco)} × {item.quantidade}</p>
                   </div>
-                ))
-              )}
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => remover(item.id)} className="w-6 h-6 rounded-full bg-washi-mid text-xs font-bold hover:bg-washi-dark">−</button>
+                    <span className="text-sm font-bold w-4 text-center text-sumi">{item.quantidade}</span>
+                    <button onClick={() => adicionar(item)} className="w-6 h-6 rounded-full bg-washi-mid text-xs font-bold hover:bg-washi-dark">+</button>
+                  </div>
+                  <span className="text-sm font-semibold w-20 text-right text-sumi">{fmt(item.preco * item.quantidade)}</span>
+                </div>
+              ))}
             </div>
-
             {carrinho.length > 0 && (
               <div className="p-4 border-t border-washi-dark space-y-3">
                 <div className="flex justify-between font-bold text-base">

@@ -24,17 +24,22 @@ def buscar_por_id(mesa_id: str):
 
 def criar(restaurante_id, numero):
     return execute_write(
-        "INSERT INTO mesas (restaurante_id, numero) VALUES (%s,%s) "
-        "RETURNING *",
+        "INSERT INTO mesas (restaurante_id, numero) VALUES (%s,%s) RETURNING *",
         (restaurante_id, numero), returning=True
     )
 
 
-def atualizar_qrcode(mesa_id: str, qr_code: str):
-    execute_write(
-        "UPDATE mesas SET qr_code = %s WHERE id = %s",
-        (qr_code, mesa_id)
-    )
+def atualizar_qrcode(mesa_id: str, qr_code: str, token_qr: str = None):
+    if token_qr:
+        execute_write(
+            "UPDATE mesas SET qr_code = %s, token_qr = %s WHERE id = %s",
+            (qr_code, token_qr, mesa_id)
+        )
+    else:
+        execute_write(
+            "UPDATE mesas SET qr_code = %s WHERE id = %s",
+            (qr_code, mesa_id)
+        )
 
 
 def deletar(mesa_id: str, restaurante_id: str):

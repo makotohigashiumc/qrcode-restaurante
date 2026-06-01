@@ -235,16 +235,13 @@ def relatorio_mesa(numero_mesa):
     ultima_lib = mesa.get("ultima_liberacao")
     todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
 
-    from datetime import date
-    hoje = date.today()
-
     pedidos_mesa = []
     for p in todos:
         if p.get("mesa_numero") != numero_mesa:
             continue
         if p.get("status") == "cancelado":
             continue
-        if p.get("criado_em") and p["criado_em"].date() != hoje:
+        if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
             continue
         pedidos_mesa.append(p)
 
@@ -282,9 +279,47 @@ def relatorio_mesa(numero_mesa):
 @pedidos_bp.post("/mesa/<int:numero_mesa>/liberar")
 @requer_auth
 def liberar_mesa(numero_mesa):
+    import uuid as _uuid
+    import os as _os
+    from app.services.qrcode_service import gerar_qrcode_base64
+
     mesa = mesa_repo.buscar_por_numero(request.restaurante_id, numero_mesa)
     if not mesa:
         return jsonify({"erro": "Mesa não encontrada"}), 404
+
+    todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
+    pedidos_pendentes = [
+        p for p in todos
+        if p.get("mesa_numero") == numero_mesa
+        and p.get("status") not in ("entregue", "cancelado")
+    ]
+
+    for p in pedidos_pendentes:
+        repo.atualizar_status(str(p["id"]), request.restaurante_id, "entregue")
+
+    agora = datetime.now(timezone.utc)
+
+    novo_token = str(_uuid.uuid4())
+    frontend_url = _os.getenv("FRONTEND_URL", "http://localhost:5173")
+    url = f"{frontend_url}/?mesa={numero_mesa}&restaurante={request.restaurante_id}&token={novo_token}"
+    novo_qr = gerar_qrcode_base64(url)
+
+    execute_write(
+        "UPDATE mesas SET ultima_liberacao = %s, token_qr = %s, qr_code = %s WHERE id = %s",
+        (agora, novo_token, novo_qr, str(mesa["id"]))
+    )
+
+    if _socketio:
+        _socketio.emit(
+            "mesa_liberada",
+            {"mesa_numero": numero_mesa},
+            room=str(request.restaurante_id),
+        )
+
+    return jsonify({
+        "mensagem":    f"Mesa {numero_mesa} liberada.",
+        "liberada_em": agora.isoformat(),
+    })
 
     todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
     pedidos_pendentes = [
