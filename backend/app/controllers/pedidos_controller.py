@@ -235,13 +235,16 @@ def relatorio_mesa(numero_mesa):
     ultima_lib = mesa.get("ultima_liberacao")
     todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
 
+    from datetime import date
+    hoje = date.today()
+
     pedidos_mesa = []
     for p in todos:
         if p.get("mesa_numero") != numero_mesa:
             continue
         if p.get("status") == "cancelado":
             continue
-        if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
+        if p.get("criado_em") and p["criado_em"].date() != hoje:
             continue
         pedidos_mesa.append(p)
 
