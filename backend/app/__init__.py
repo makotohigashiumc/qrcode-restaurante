@@ -1,9 +1,10 @@
 import os
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, join_room
-from flask import jsonify
 from flask_mail import Mail
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from app.services.email_service import mail
 
 from app.controllers.admin_controller import admin_bp
@@ -15,6 +16,12 @@ from app.services.auth_service import auth_rf_bp
 from app.database import close_request_connection, DatabaseUnavailable
 
 socketio = SocketIO(cors_allowed_origins="*")
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 
 def create_app():
@@ -32,6 +39,8 @@ def create_app():
     app.config["FRONTEND_URL"]        = os.environ.get("FRONTEND_URL", "http://localhost:5173")
     mail.init_app(app)
 
+    limiter.init_app(app)
+
     app.register_blueprint(admin_bp)
     app.register_blueprint(cardapio_bp)
     app.register_blueprint(mesas_bp)
@@ -42,7 +51,6 @@ def create_app():
     socketio.init_app(app)
     init_socketio(socketio)
 
-    # ── Serve imagens enviadas pelo admin ────────────────────
     UPLOAD_DIR = os.path.join(os.path.dirname(app.root_path), "uploads")
 
     @app.get("/uploads/<path:filename>")
@@ -62,6 +70,12 @@ def create_app():
     @app.get("/health")
     def health():
         return {"status": "ok"}
+
+    @app.errorhandler(429)
+    def ratelimit_handler(e):
+        return jsonify({
+            "erro": "Muitas requisições. Aguarde alguns instantes antes de tentar novamente."
+        }), 429
 
     @app.errorhandler(DatabaseUnavailable)
     def _db_unavailable(err):

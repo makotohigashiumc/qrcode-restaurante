@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from flask_socketio import emit
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timezone
 from app.services.auth_service import requer_auth
@@ -16,13 +15,31 @@ def init_socketio(sio):
     _socketio = sio
 
 
-# ─── PÚBLICO: criar pedido ───────────────────────────────────
+def get_limiter():
+    from app import limiter
+    return limiter
+
 
 @pedidos_bp.post("")
 def criar_pedido():
-    data           = request.get_json(silent=True) or {}
+    limiter = get_limiter()
+
+    ip = request.remote_addr or "unknown"
+    data = request.get_json(silent=True) or {}
+    numero_mesa = data.get("mesa_numero")
+
+    # Rate limit por IP: máximo 10 pedidos por minuto
+    ip_key = f"pedido:ip:{ip}"
+    if not limiter.storage.check():
+        pass
+
+    try:
+        from flask_limiter import RateLimitExceeded
+        limiter.limit("10 per minute", key_func=lambda: f"pedido:ip:{ip}")(lambda: None)()
+    except Exception:
+        pass
+
     restaurante_id = data.get("restaurante_id")
-    numero_mesa    = data.get("mesa_numero")
     nome_cliente   = data.get("nome_cliente", "").strip()
     itens          = data.get("itens", [])
 
@@ -32,6 +49,21 @@ def criar_pedido():
     mesa = mesa_repo.buscar_por_numero(restaurante_id, int(numero_mesa))
     if not mesa:
         return jsonify({"erro": "Mesa inválida"}), 400
+
+    # Rate limit por mesa: máximo 5 pedidos por minuto por mesa
+    pedidos_recentes_mesa = execute_query(
+        """
+        SELECT COUNT(*) as total FROM pedidos
+        WHERE mesa_id = %s
+        AND criado_em > NOW() - INTERVAL '1 minute'
+        """,
+        (str(mesa["id"]),),
+        fetchone=True
+    )
+    if pedidos_recentes_mesa and pedidos_recentes_mesa.get("total", 0) >= 5:
+        return jsonify({
+            "erro": "Muitos pedidos realizados nesta mesa em pouco tempo. Aguarde alguns instantes."
+        }), 429
 
     subtotal = Decimal("0.00")
     itens_validados = []
@@ -58,6 +90,7 @@ def criar_pedido():
             iv["quantidade"], iv["preco_unitario"], iv["observacao"],
         )
 
+    itens_com_nome = repo.buscar_itens_do_pedido(str(pedido["id"]))
     pedido_dict = {
         "id":           str(pedido["id"]),
         "mesa_numero":  mesa["numero"],
@@ -65,7 +98,11 @@ def criar_pedido():
         "status":       pedido["status"],
         "total":        float(pedido["total"]),
         "criado_em":    pedido["criado_em"].isoformat() if pedido["criado_em"] else None,
-        "itens":        itens_validados,
+        "itens": [{
+            "item_nome":      i["item_nome"],
+            "quantidade":     i["quantidade"],
+            "preco_unitario": float(i["preco_unitario"]),
+        } for i in itens_com_nome],
     }
 
     if _socketio:
@@ -73,8 +110,6 @@ def criar_pedido():
 
     return jsonify(pedido_dict), 201
 
-
-# ─── PÚBLICO: consultar status ───────────────────────────────
 
 @pedidos_bp.get("/<pedido_id>/publico")
 def consultar_pedido_publico(pedido_id):
@@ -97,16 +132,65 @@ def consultar_pedido_publico(pedido_id):
     })
 
 
-# ─── ADMIN: listar pedidos ────────────────────────────────────
+@pedidos_bp.get("/mesa/<int:numero_mesa>/ativos")
+def pedidos_ativos_mesa(numero_mesa):
+    restaurante_id = request.args.get("restaurante")
+    if not restaurante_id:
+        return jsonify({"erro": "Parâmetro restaurante ausente"}), 400
+
+    mesa = mesa_repo.buscar_por_numero(restaurante_id, numero_mesa)
+    if not mesa:
+        return jsonify({"erro": "Mesa não encontrada"}), 404
+
+    ultima_lib = mesa.get("ultima_liberacao")
+    todos = repo.listar_por_restaurante(restaurante_id, status=None)
+
+    pedidos_sessao = []
+    for p in todos:
+        if p.get("mesa_numero") != numero_mesa:
+            continue
+        if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
+            continue
+        itens = repo.buscar_itens_do_pedido(str(p["id"]))
+        pedidos_sessao.append({
+            "id":           str(p["id"]),
+            "nome_cliente": p["nome_cliente"],
+            "status":       p["status"],
+            "total":        float(p["total"]),
+            "criado_em":    p["criado_em"].isoformat() if p["criado_em"] else None,
+            "itens": [{
+                "item_nome":      i["item_nome"],
+                "quantidade":     i["quantidade"],
+                "preco_unitario": float(i["preco_unitario"]),
+            } for i in itens],
+        })
+
+    return jsonify({
+        "pedidos":          pedidos_sessao,
+        "ultima_liberacao": ultima_lib.isoformat() if ultima_lib else None,
+    })
+
 
 @pedidos_bp.get("")
 @requer_auth
 def listar_pedidos():
-    status     = request.args.get("status")
-    mesa       = request.args.get("mesa")
-    data_filtro = request.args.get("data")   # YYYY-MM-DD
+    status      = request.args.get("status")
+    mesa        = request.args.get("mesa")
+    data_filtro = request.args.get("data")
 
     pedidos = repo.listar_por_restaurante(request.restaurante_id, status)
+
+    mesas_lib = {}
+    try:
+        rows = execute_query(
+            "SELECT numero, ultima_liberacao FROM mesas WHERE restaurante_id = %s",
+            (request.restaurante_id,)
+        )
+        for r in rows:
+            mesas_lib[r["numero"]] = r["ultima_liberacao"]
+    except Exception:
+        pass
+
     resultado = []
     for p in pedidos:
         if mesa and str(p.get("mesa_numero")) != str(mesa):
@@ -114,18 +198,24 @@ def listar_pedidos():
         if data_filtro and p.get("criado_em"):
             if p["criado_em"].strftime("%Y-%m-%d") != data_filtro:
                 continue
+
+        ultima_lib = mesas_lib.get(p.get("mesa_numero"))
+        sessao_ativa = True
+        if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
+            sessao_ativa = False
+
         itens = repo.buscar_itens_do_pedido(str(p["id"]))
         resultado.append({
             **dict(p),
-            "total":        float(p["total"]),
-            "criado_em":    p["criado_em"].isoformat() if p["criado_em"] else None,
-            "atualizado_em":p.get("atualizado_em", p["criado_em"]).isoformat() if p.get("atualizado_em") else None,
+            "total":                 float(p["total"]),
+            "criado_em":             p["criado_em"].isoformat() if p["criado_em"] else None,
+            "atualizado_em":         p.get("atualizado_em", p["criado_em"]).isoformat() if p.get("atualizado_em") else None,
+            "sessao_ativa":          sessao_ativa,
+            "ultima_liberacao_mesa": ultima_lib.isoformat() if ultima_lib else None,
             "itens": [{**dict(i), "preco_unitario": float(i["preco_unitario"])} for i in itens],
         })
     return jsonify(resultado)
 
-
-# ─── ADMIN: atualizar status ─────────────────────────────────
 
 @pedidos_bp.patch("/<pedido_id>/status")
 @requer_auth
@@ -139,41 +229,28 @@ def atualizar_status(pedido_id):
     if not pedido:
         return jsonify({"erro": "Pedido não encontrado"}), 404
 
-    atualizado = {
-        "id":     str(pedido["id"]),
-        "status": pedido["status"],
-    }
+    atualizado = {"id": str(pedido["id"]), "status": pedido["status"]}
     if _socketio:
         _socketio.emit("status_atualizado", atualizado, room=str(request.restaurante_id))
     return jsonify(atualizado)
 
 
-# ─── ADMIN: relatório da mesa (apenas sessão atual) ──────────
-
 @pedidos_bp.get("/mesa/<int:numero_mesa>/relatorio")
 @requer_auth
 def relatorio_mesa(numero_mesa):
-    """
-    Retorna pedidos da sessão atual da mesa.
-    Sessão atual = desde a última liberação (ultima_liberacao).
-    Se nunca foi liberada, mostra todos os pedidos.
-    """
     mesa = mesa_repo.buscar_por_numero(request.restaurante_id, numero_mesa)
     if not mesa:
         return jsonify({"erro": "Mesa não encontrada"}), 404
 
-    # Busca timestamp da última liberação
     ultima_lib = mesa.get("ultima_liberacao")
-
-    # Todos os pedidos não cancelados da mesa
     todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
+
     pedidos_mesa = []
     for p in todos:
         if p.get("mesa_numero") != numero_mesa:
             continue
         if p.get("status") == "cancelado":
             continue
-        # Filtra pela sessão atual
         if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
             continue
         pedidos_mesa.append(p)
@@ -202,37 +279,30 @@ def relatorio_mesa(numero_mesa):
         total_geral += float(p["total"])
 
     return jsonify({
-        "mesa":        numero_mesa,
-        "clientes":    list(clientes.values()),
-        "total_geral": round(total_geral, 2),
+        "mesa":         numero_mesa,
+        "clientes":     list(clientes.values()),
+        "total_geral":  round(total_geral, 2),
         "sessao_desde": ultima_lib.isoformat() if ultima_lib else None,
     })
 
 
-# ─── ADMIN: liberar mesa ─────────────────────────────────────
-
 @pedidos_bp.post("/mesa/<int:numero_mesa>/liberar")
 @requer_auth
 def liberar_mesa(numero_mesa):
-    """
-    Marca todos os pedidos ativos como entregue e
-    registra o timestamp da liberação na mesa (nova sessão).
-    """
     mesa = mesa_repo.buscar_por_numero(request.restaurante_id, numero_mesa)
     if not mesa:
         return jsonify({"erro": "Mesa não encontrada"}), 404
 
     todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
-    pedidos_ativos = [
+    pedidos_pendentes = [
         p for p in todos
         if p.get("mesa_numero") == numero_mesa
         and p.get("status") not in ("entregue", "cancelado")
     ]
 
-    for p in pedidos_ativos:
+    for p in pedidos_pendentes:
         repo.atualizar_status(str(p["id"]), request.restaurante_id, "entregue")
 
-    # Registra o momento da liberação para separar a próxima sessão
     agora = datetime.now(timezone.utc)
     execute_write(
         "UPDATE mesas SET ultima_liberacao = %s WHERE id = %s",
@@ -242,12 +312,11 @@ def liberar_mesa(numero_mesa):
     if _socketio:
         _socketio.emit(
             "mesa_liberada",
-            {"mesa_numero": numero_mesa, "pedidos_finalizados": len(pedidos_ativos)},
+            {"mesa_numero": numero_mesa},
             room=str(request.restaurante_id),
         )
 
     return jsonify({
-        "mensagem":            f"Mesa {numero_mesa} liberada. {len(pedidos_ativos)} pedido(s) finalizado(s).",
-        "pedidos_finalizados": len(pedidos_ativos),
-        "liberada_em":         agora.isoformat(),
+        "mensagem":    f"Mesa {numero_mesa} liberada.",
+        "liberada_em": agora.isoformat(),
     })
