@@ -1,13 +1,11 @@
-
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 
-// Páginas públicas
 import CardapioPage           from './pages/CardapioPage'
 import CozinhaPage            from './pages/CozinhaPage'
 import PoliticaPrivacidadePage from './pages/PoliticaPrivacidadePage'
+import MesaDisplayPage        from './pages/public/MesaDisplayPage'
 
-// Páginas admin
 import LoginPage              from './pages/admin/LoginPage'
 import RegistroPage           from './pages/admin/RegistroPage'
 import DashboardPage          from './pages/admin/DashboardPage'
@@ -38,27 +36,23 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Cardápio público */}
-          <Route path="/"                         element={<CardapioPage />} />
-          {/* Cozinha */}
-          <Route path="/cozinha"                  element={<CozinhaPage />} />
-          {/* Políticas */}
-          <Route path="/politica-de-privacidade"  element={<PoliticaPrivacidadePage />} />
+          <Route path="/"                              element={<CardapioPage />} />
+          <Route path="/mesa/:numero/display"          element={<MesaDisplayPage />} />
+          <Route path="/cozinha"                       element={<CozinhaPage />} />
+          <Route path="/politica-de-privacidade"       element={<PoliticaPrivacidadePage />} />
 
-          {/* Auth públicas */}
-          <Route path="/admin/login"              element={<LoginPage />} />
-          <Route path="/admin/registro"           element={<RegistroPage />} />
-          <Route path="/admin/esqueci-senha"      element={<EsqueciSenhaPage />} />
-          <Route path="/admin/nova-senha/:token"  element={<NovaSenhaPage />} />
-          <Route path="/verificar-email/:token"   element={<VerificarEmailPage />} />
+          <Route path="/admin/login"                   element={<LoginPage />} />
+          <Route path="/admin/registro"                element={<RegistroPage />} />
+          <Route path="/admin/esqueci-senha"           element={<EsqueciSenhaPage />} />
+          <Route path="/admin/nova-senha/:token"       element={<NovaSenhaPage />} />
+          <Route path="/verificar-email/:token"        element={<VerificarEmailPage />} />
 
-          {/* Admin protegido */}
           <Route path="/admin" element={<RotaProtegida><AdminLayout /></RotaProtegida>}>
-            <Route index                          element={<DashboardPage />} />
-            <Route path="cardapio"                element={<CardapioAdminPage />} />
-            <Route path="mesas"                   element={<MesasAdminPage />} />
-            <Route path="pedidos"                 element={<PedidosAdminPage />} />
-            <Route path="configuracao"            element={<ConfiguracaoPage />} />
+            <Route index                               element={<DashboardPage />} />
+            <Route path="cardapio"                     element={<CardapioAdminPage />} />
+            <Route path="mesas"                        element={<MesasAdminPage />} />
+            <Route path="pedidos"                      element={<PedidosAdminPage />} />
+            <Route path="configuracao"                 element={<ConfiguracaoPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

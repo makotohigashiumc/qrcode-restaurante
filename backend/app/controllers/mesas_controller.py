@@ -70,3 +70,21 @@ def verificar_mesa():
         "ultima_liberacao": ultima_lib.isoformat() if ultima_lib else None,
         "token_valido":     True,
     })
+
+
+@mesas_bp.get("/mesas/display")
+def display_mesa():
+    restaurante_id = request.args.get("restaurante")
+    numero         = request.args.get("numero")
+
+    if not restaurante_id or not numero:
+        return jsonify({"erro": "Parâmetros ausentes"}), 400
+
+    mesa = repo.buscar_por_numero(restaurante_id, int(numero))
+    if not mesa:
+        return jsonify({"erro": "Mesa não encontrada"}), 404
+
+    return jsonify({
+        "numero":   mesa["numero"],
+        "qr_code":  mesa.get("qr_code"),
+    })
