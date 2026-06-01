@@ -15,31 +15,21 @@ def init_socketio(sio):
     _socketio = sio
 
 
-def get_limiter():
-    from app import limiter
-    return limiter
-
-
 @pedidos_bp.post("")
 def criar_pedido():
-    limiter = get_limiter()
+    from app import limiter
 
-    ip = request.remote_addr or "unknown"
-    data = request.get_json(silent=True) or {}
-    numero_mesa = data.get("mesa_numero")
-
-    # Rate limit por IP: máximo 10 pedidos por minuto
-    ip_key = f"pedido:ip:{ip}"
-    if not limiter.storage.check():
-        pass
-
+    # Rate limit por IP: máximo 20 requisições por minuto
     try:
-        from flask_limiter import RateLimitExceeded
-        limiter.limit("10 per minute", key_func=lambda: f"pedido:ip:{ip}")(lambda: None)()
+        limiter.limit("20 per minute")(lambda: None)()
     except Exception:
-        pass
+        return jsonify({
+            "erro": "Muitas requisições. Aguarde alguns instantes antes de tentar novamente."
+        }), 429
 
+    data          = request.get_json(silent=True) or {}
     restaurante_id = data.get("restaurante_id")
+    numero_mesa    = data.get("mesa_numero")
     nome_cliente   = data.get("nome_cliente", "").strip()
     itens          = data.get("itens", [])
 
@@ -51,7 +41,7 @@ def criar_pedido():
         return jsonify({"erro": "Mesa inválida"}), 400
 
     # Rate limit por mesa: máximo 5 pedidos por minuto por mesa
-    pedidos_recentes_mesa = execute_query(
+    pedidos_recentes = execute_query(
         """
         SELECT COUNT(*) as total FROM pedidos
         WHERE mesa_id = %s
@@ -60,7 +50,7 @@ def criar_pedido():
         (str(mesa["id"]),),
         fetchone=True
     )
-    if pedidos_recentes_mesa and pedidos_recentes_mesa.get("total", 0) >= 5:
+    if pedidos_recentes and pedidos_recentes.get("total", 0) >= 5:
         return jsonify({
             "erro": "Muitos pedidos realizados nesta mesa em pouco tempo. Aguarde alguns instantes."
         }), 429
