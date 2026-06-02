@@ -138,8 +138,11 @@ export default function ConfiguracaoPage() {
                 <Field
                   label="Telefone"
                   value={form.telefone}
-                  onChange={e => set('telefone', e.target.value)}
-                  placeholder="(11) 99999-0000"
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11)
+                    set('telefone', digits)
+                  }}
+                  placeholder="11999990000"
                 />
               </div>
             </div>
