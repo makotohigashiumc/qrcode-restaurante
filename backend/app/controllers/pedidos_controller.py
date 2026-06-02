@@ -19,7 +19,6 @@ def init_socketio(sio):
 def criar_pedido():
     from app import limiter
 
-    # Rate limit por IP: máximo 20 requisições por minuto
     try:
         limiter.limit("20 per minute")(lambda: None)()
     except Exception:
@@ -27,7 +26,7 @@ def criar_pedido():
             "erro": "Muitas requisições. Aguarde alguns instantes antes de tentar novamente."
         }), 429
 
-    data          = request.get_json(silent=True) or {}
+    data           = request.get_json(silent=True) or {}
     restaurante_id = data.get("restaurante_id")
     numero_mesa    = data.get("mesa_numero")
     nome_cliente   = data.get("nome_cliente", "").strip()
@@ -40,15 +39,9 @@ def criar_pedido():
     if not mesa:
         return jsonify({"erro": "Mesa inválida"}), 400
 
-    # Rate limit por mesa: máximo 5 pedidos por minuto por mesa
     pedidos_recentes = execute_query(
-        """
-        SELECT COUNT(*) as total FROM pedidos
-        WHERE mesa_id = %s
-        AND criado_em > NOW() - INTERVAL '1 minute'
-        """,
-        (str(mesa["id"]),),
-        fetchone=True
+        "SELECT COUNT(*) as total FROM pedidos WHERE mesa_id = %s AND criado_em > NOW() - INTERVAL '1 minute'",
+        (str(mesa["id"]),), fetchone=True
     )
     if pedidos_recentes and pedidos_recentes.get("total", 0) >= 5:
         return jsonify({
@@ -189,7 +182,7 @@ def listar_pedidos():
             if p["criado_em"].strftime("%Y-%m-%d") != data_filtro:
                 continue
 
-        ultima_lib = mesas_lib.get(p.get("mesa_numero"))
+        ultima_lib   = mesas_lib.get(p.get("mesa_numero"))
         sessao_ativa = True
         if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
             sessao_ativa = False
@@ -241,8 +234,16 @@ def relatorio_mesa(numero_mesa):
             continue
         if p.get("status") == "cancelado":
             continue
-        if ultima_lib and p.get("criado_em") and p["criado_em"] <= ultima_lib:
-            continue
+        # Mostra pedidos da ultima sessao encerrada (antes de ultima_liberacao)
+        # ou da sessao atual (se nao houver liberacao ainda)
+        if ultima_lib and p.get("criado_em"):
+            # Pedido da sessao atual (apos ultima liberacao) — nao inclui no relatorio
+            if p["criado_em"] > ultima_lib:
+                continue
+            # Pedido da sessao anterior — inclui apenas os mais recentes (do dia)
+            from datetime import date
+            if p["criado_em"].date() != ultima_lib.date():
+                continue
         pedidos_mesa.append(p)
 
     clientes = {}
@@ -297,44 +298,15 @@ def liberar_mesa(numero_mesa):
     for p in pedidos_pendentes:
         repo.atualizar_status(str(p["id"]), request.restaurante_id, "entregue")
 
-    agora = datetime.now(timezone.utc)
-
-    novo_token = str(_uuid.uuid4())
+    agora        = datetime.now(timezone.utc)
+    novo_token   = str(_uuid.uuid4())
     frontend_url = _os.getenv("FRONTEND_URL", "http://localhost:5173")
-    url = f"{frontend_url}/?mesa={numero_mesa}&restaurante={request.restaurante_id}&token={novo_token}"
-    novo_qr = gerar_qrcode_base64(url)
+    url          = f"{frontend_url}/?mesa={numero_mesa}&restaurante={request.restaurante_id}&token={novo_token}"
+    novo_qr      = gerar_qrcode_base64(url)
 
     execute_write(
         "UPDATE mesas SET ultima_liberacao = %s, token_qr = %s, qr_code = %s WHERE id = %s",
         (agora, novo_token, novo_qr, str(mesa["id"]))
-    )
-
-    if _socketio:
-        _socketio.emit(
-            "mesa_liberada",
-            {"mesa_numero": numero_mesa},
-            room=str(request.restaurante_id),
-        )
-
-    return jsonify({
-        "mensagem":    f"Mesa {numero_mesa} liberada.",
-        "liberada_em": agora.isoformat(),
-    })
-
-    todos = repo.listar_por_restaurante(request.restaurante_id, status=None)
-    pedidos_pendentes = [
-        p for p in todos
-        if p.get("mesa_numero") == numero_mesa
-        and p.get("status") not in ("entregue", "cancelado")
-    ]
-
-    for p in pedidos_pendentes:
-        repo.atualizar_status(str(p["id"]), request.restaurante_id, "entregue")
-
-    agora = datetime.now(timezone.utc)
-    execute_write(
-        "UPDATE mesas SET ultima_liberacao = %s WHERE id = %s",
-        (agora, str(mesa["id"]))
     )
 
     if _socketio:
