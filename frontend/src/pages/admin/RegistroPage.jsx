@@ -45,6 +45,19 @@ function SenhaRules({ senha }) {
   )
 }
 
+function Field({ label, value, onChange, type='text', placeholder, disabled }) {
+  return (
+    <div>
+      <label className="block font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 mb-2">{label}</label>
+      <input
+        type={type} value={value} onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} disabled={disabled}
+        className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors disabled:opacity-40"
+      />
+    </div>
+  )
+}
+
 export default function RegistroPage() {
   const nav = useNavigate()
   const [loading, setLoading]       = useState(false)
@@ -55,6 +68,7 @@ export default function RegistroPage() {
     nome: '', email: '', senha: '', confirmar: '',
     telefone: '', cep: '', logradouro: '', bairro: '', cidade: '', estado: ''
   })
+
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }))
   const senhaValida = REGRAS.every(r => r.test(form.senha))
 
@@ -72,9 +86,9 @@ export default function RegistroPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!senhaValida)                    { toast.error('A senha não atende aos requisitos.'); return }
-    if (form.senha !== form.confirmar)   { toast.error('Senhas não coincidem'); return }
-    if (!aceite)                         { toast.error('Aceite a Política de Privacidade'); return }
+    if (!senhaValida)                  { toast.error('A senha não atende aos requisitos.'); return }
+    if (form.senha !== form.confirmar) { toast.error('Senhas não coincidem'); return }
+    if (!aceite)                       { toast.error('Aceite a Política de Privacidade'); return }
     setLoading(true)
     try {
       await api.post('/api/admin/registro', {
@@ -91,18 +105,8 @@ export default function RegistroPage() {
     }
   }
 
-  const Field = ({ label, k, type='text', placeholder, disabled }) => (
-    <div>
-      <label className="block font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 mb-2">{label}</label>
-      <input type={type} value={form[k]||''} onChange={e => set(k, e.target.value)}
-        placeholder={placeholder} disabled={disabled}
-        className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors disabled:opacity-40" />
-    </div>
-  )
-
   return (
     <div className="min-h-screen bg-washi flex">
-      {/* Painel esquerdo */}
       <div className="hidden md:flex flex-col justify-between flex-1 px-14 py-12 bg-sumi">
         <div className="flex items-center gap-4">
           <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-12 h-12 object-contain" />
@@ -122,7 +126,6 @@ export default function RegistroPage() {
         <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">Sistema de gestão — Nagoya Garden</p>
       </div>
 
-      {/* Formulário */}
       <div className="flex items-start justify-center w-full md:w-[500px] px-10 py-12 bg-washi flex-shrink-0 overflow-y-auto">
         <div className="w-full max-w-sm">
           {cadastrado ? (
@@ -148,25 +151,42 @@ export default function RegistroPage() {
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 <p className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/35 pt-1">Dados do restaurante</p>
-                <Field label="Nome do restaurante *" k="nome" placeholder="Ex: Nagoya Garden" />
+
+                <Field label="Nome do restaurante *" value={form.nome} onChange={v => set('nome', v)} placeholder="Ex: Nagoya Garden" />
+
                 <div className="grid grid-cols-2 gap-4">
-                  <Field label="E-mail *" k="email" type="email" placeholder="admin@..." />
-                  <Field label="Telefone *" k="telefone" placeholder="(11) 99999-0000" />
+                  <Field label="E-mail *" value={form.email} onChange={v => set('email', v)} type="email" placeholder="admin@..." />
+                  <div>
+                    <label className="block font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 mb-2">Telefone *</label>
+                    <input
+                      type="tel"
+                      value={form.telefone}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 11)
+                        set('telefone', digits)
+                      }}
+                      placeholder="11999990000"
+                      maxLength={11}
+                      className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors"
+                    />
+                  </div>
                 </div>
 
                 <p className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/35 pt-2">Endereço</p>
                 <div className="flex gap-3 items-end">
-                  <div className="flex-1"><Field label="CEP *" k="cep" placeholder="00000-000" /></div>
+                  <div className="flex-1">
+                    <Field label="CEP *" value={form.cep} onChange={v => set('cep', v)} placeholder="00000-000" />
+                  </div>
                   <button type="button" onClick={buscarCep} disabled={buscando}
                     className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 border border-half border-washi-dark px-3 py-2 hover:border-sumi transition-colors disabled:opacity-40 whitespace-nowrap mb-0.5">
                     {buscando ? '...' : 'Buscar'}
                   </button>
                 </div>
-                <Field label="Logradouro" k="logradouro" placeholder="Preenchido automaticamente" disabled={!!form.logradouro} />
+                <Field label="Logradouro" value={form.logradouro} onChange={v => set('logradouro', v)} placeholder="Preenchido automaticamente" disabled={!!form.logradouro} />
                 <div className="grid grid-cols-3 gap-3">
-                  <Field label="Bairro" k="bairro" placeholder="Bairro" />
-                  <Field label="Cidade" k="cidade" placeholder="Cidade" />
-                  <Field label="UF" k="estado" placeholder="SP" />
+                  <Field label="Bairro" value={form.bairro} onChange={v => set('bairro', v)} placeholder="Bairro" />
+                  <Field label="Cidade" value={form.cidade} onChange={v => set('cidade', v)} placeholder="Cidade" />
+                  <Field label="UF" value={form.estado} onChange={v => set('estado', v)} placeholder="SP" />
                 </div>
 
                 <p className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/35 pt-2">Acesso</p>
