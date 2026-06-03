@@ -101,10 +101,7 @@ export default function ConfiguracaoPage() {
               ? 'Servidor offline'
               : 'Erro ao carregar'}
           </p>
-          <button
-            onClick={() => refetch()}
-            className="font-sans text-xs text-beni mt-1 hover:underline"
-          >
+          <button onClick={() => refetch()} className="font-sans text-xs text-beni mt-1 hover:underline">
             Tentar novamente
           </button>
         </div>
@@ -128,7 +125,7 @@ export default function ConfiguracaoPage() {
                 label="Nome do restaurante"
                 value={form.nome}
                 onChange={e => set('nome', e.target.value)}
-                placeholder="Ex: Nagoya Garden"
+                placeholder="Ex: Meu Restaurante"
               />
               <div className="grid grid-cols-2 gap-6">
                 <div>
@@ -157,28 +154,14 @@ export default function ConfiguracaoPage() {
             <div className="space-y-5">
               <div className="flex gap-4 items-end">
                 <div className="flex-1">
-                  <Field
-                    label="CEP"
-                    value={form.cep}
-                    onChange={e => set('cep', e.target.value)}
-                    placeholder="00000-000"
-                  />
+                  <Field label="CEP" value={form.cep} onChange={e => set('cep', e.target.value)} placeholder="00000-000" />
                 </div>
-                <button
-                  type="button"
-                  onClick={buscarCep}
-                  disabled={buscando}
-                  className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 border border-half border-washi-dark px-4 py-2 hover:border-sumi transition-colors disabled:opacity-40 whitespace-nowrap mb-0.5"
-                >
+                <button type="button" onClick={buscarCep} disabled={buscando}
+                  className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 border border-half border-washi-dark px-4 py-2 hover:border-sumi transition-colors disabled:opacity-40 whitespace-nowrap mb-0.5">
                   {buscando ? '...' : 'Buscar'}
                 </button>
               </div>
-              <Field
-                label="Logradouro"
-                value={form.logradouro}
-                onChange={e => set('logradouro', e.target.value)}
-                placeholder="Rua, Av., Alameda..."
-              />
+              <Field label="Logradouro" value={form.logradouro} onChange={e => set('logradouro', e.target.value)} placeholder="Rua, Av., Alameda..." />
               <div className="grid grid-cols-3 gap-4">
                 <Field label="Bairro"  value={form.bairro}  onChange={e => set('bairro',  e.target.value)} placeholder="Bairro" />
                 <Field label="Cidade"  value={form.cidade}  onChange={e => set('cidade',  e.target.value)} placeholder="Cidade" />
@@ -187,11 +170,8 @@ export default function ConfiguracaoPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => salvar.mutate()}
-            disabled={salvar.isLoading}
-            className="w-full bg-sumi text-washi font-sans text-[10px] tracking-widest-jp uppercase py-3.5 transition-opacity disabled:opacity-50"
-          >
+          <button onClick={() => salvar.mutate()} disabled={salvar.isLoading}
+            className="w-full bg-sumi text-washi font-sans text-[10px] tracking-widest-jp uppercase py-3.5 transition-opacity disabled:opacity-50">
             {salvar.isLoading ? 'Salvando...' : 'Salvar configurações'}
           </button>
         </div>

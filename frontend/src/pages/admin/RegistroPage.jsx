@@ -11,6 +11,29 @@ const REGRAS = [
   { label: 'Caractere especial (!@#…)',  test: s => /[!@#$%^&*()\-_=+]/.test(s) },
 ]
 
+function Logo({ dark = false }) {
+  return (
+    <div className="flex items-center gap-3">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="8" fill={dark ? '#F5F0EB' : '#1A1410'} />
+        <path d="M10 10h6v6h-6zM10 20h6v6h-6zM20 10h6v6h-6z" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="22" y="22" width="4" height="4" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="20" y="20" width="2" height="2" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="24" y="20" width="2" height="2" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="20" y="24" width="2" height="2" fill={dark ? '#1A1410' : '#F5F0EB'} />
+      </svg>
+      <div>
+        <p className={`font-display text-lg font-bold uppercase tracking-widest-jp ${dark ? 'text-sumi' : 'text-washi'}`}>
+          QR RESTAURANTE
+        </p>
+        <p className={`font-sans text-[9px] tracking-widest-jp uppercase ${dark ? 'text-sumi/40' : 'text-washi/40'}`}>
+          Sistema de pedidos
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function SenhaField({ label, value, onChange, placeholder, autoComplete }) {
   const [show, setShow] = useState(false)
   return (
@@ -108,13 +131,7 @@ export default function RegistroPage() {
   return (
     <div className="min-h-screen bg-washi flex">
       <div className="hidden md:flex flex-col justify-between flex-1 px-14 py-12 bg-sumi">
-        <div className="flex items-center gap-4">
-          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-12 h-12 object-contain" />
-          <div>
-            <p className="font-display text-washi tracking-wider-jp text-lg font-bold uppercase">NAGOYA GARDEN</p>
-            <p className="font-sans text-washi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
-          </div>
-        </div>
+        <Logo dark={false} />
         <div>
           <h1 className="font-display text-washi text-4xl font-light leading-snug mb-6">
             Comece a usar<br />em <span className="text-beni font-semibold">minutos.</span>
@@ -123,7 +140,7 @@ export default function RegistroPage() {
             Cadastre seu restaurante e tenha cardápio digital, gestão de pedidos e painel da cozinha funcionando hoje.
           </p>
         </div>
-        <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">Sistema de gestão — Nagoya Garden</p>
+        <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">QR Restaurante — Sistema de gestão</p>
       </div>
 
       <div className="flex items-start justify-center w-full md:w-[500px] px-10 py-12 bg-washi flex-shrink-0 overflow-y-auto">
@@ -152,7 +169,7 @@ export default function RegistroPage() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <p className="font-sans text-[9px] tracking-widest-jp uppercase text-sumi/35 pt-1">Dados do restaurante</p>
 
-                <Field label="Nome do restaurante *" value={form.nome} onChange={v => set('nome', v)} placeholder="Ex: Nagoya Garden" />
+                <Field label="Nome do restaurante *" value={form.nome} onChange={v => set('nome', v)} placeholder="Ex: Meu Restaurante" />
 
                 <div className="grid grid-cols-2 gap-4">
                   <Field label="E-mail *" value={form.email} onChange={v => set('email', v)} type="email" placeholder="admin@..." />

@@ -22,10 +22,17 @@ export default function AdminLayout() {
       <header className="bg-sumi h-14 flex items-center justify-between px-7 sticky top-0 z-40">
 
         <Link to="/admin" className="flex items-center gap-3 flex-shrink-0">
-          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-8 h-8 object-contain" />
+          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="8" fill="#F5F0EB" />
+            <path d="M10 10h6v6h-6zM10 20h6v6h-6zM20 10h6v6h-6z" fill="#1A1410" />
+            <rect x="22" y="22" width="4" height="4" fill="#1A1410" />
+            <rect x="20" y="20" width="2" height="2" fill="#1A1410" />
+            <rect x="24" y="20" width="2" height="2" fill="#1A1410" />
+            <rect x="20" y="24" width="2" height="2" fill="#1A1410" />
+          </svg>
           <div className="hidden sm:block">
-            <p className="font-display text-washi text-sm font-bold tracking-wider-jp uppercase leading-none">NAGOYA GARDEN</p>
-            <p className="font-sans text-washi/35 text-[8px] tracking-widest-jp uppercase leading-none mt-0.5">Comida Japonesa</p>
+            <p className="font-display text-washi text-sm font-bold tracking-wider-jp uppercase leading-none">QR RESTAURANTE</p>
+            <p className="font-sans text-washi/35 text-[8px] tracking-widest-jp uppercase leading-none mt-0.5">Sistema de pedidos</p>
           </div>
         </Link>
 

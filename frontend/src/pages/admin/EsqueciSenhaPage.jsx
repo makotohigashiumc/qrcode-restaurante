@@ -3,6 +3,23 @@ import { Link } from 'react-router-dom'
 import api from '../../services/api'
 import toast from 'react-hot-toast'
 
+function Logo() {
+  return (
+    <div className="flex flex-col items-center mb-10">
+      <svg width="48" height="48" viewBox="0 0 36 36" fill="none" className="mb-4">
+        <rect width="36" height="36" rx="8" fill="#1A1410" />
+        <path d="M10 10h6v6h-6zM10 20h6v6h-6zM20 10h6v6h-6z" fill="#F5F0EB" />
+        <rect x="22" y="22" width="4" height="4" fill="#F5F0EB" />
+        <rect x="20" y="20" width="2" height="2" fill="#F5F0EB" />
+        <rect x="24" y="20" width="2" height="2" fill="#F5F0EB" />
+        <rect x="20" y="24" width="2" height="2" fill="#F5F0EB" />
+      </svg>
+      <p className="font-display text-sumi text-lg font-bold tracking-wider-jp uppercase">QR RESTAURANTE</p>
+      <p className="font-sans text-sumi/40 text-[9px] tracking-widest-jp uppercase">Sistema de pedidos</p>
+    </div>
+  )
+}
+
 export function EsqueciSenhaPage() {
   const [email, setEmail]   = useState('')
   const [enviado, setEnv]   = useState(false)
@@ -22,11 +39,7 @@ export function EsqueciSenhaPage() {
   return (
     <div className="min-h-screen bg-washi flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-10">
-          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-14 h-14 object-contain mb-4" />
-          <p className="font-display text-sumi text-lg font-bold tracking-wider-jp uppercase">NAGOYA GARDEN</p>
-          <p className="font-sans text-sumi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
-        </div>
+        <Logo />
 
         {enviado ? (
           <div className="border border-half border-washi-dark p-8 text-center">
@@ -49,7 +62,7 @@ export function EsqueciSenhaPage() {
                 <label className="block font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 mb-2">E-mail</label>
                 <input
                   type="email" value={email} onChange={e => setEmail(e.target.value)}
-                  placeholder="admin@nagoyagarden.com.br" autoComplete="email"
+                  placeholder="admin@seurestaurante.com.br" autoComplete="email"
                   className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors"
                 />
               </div>

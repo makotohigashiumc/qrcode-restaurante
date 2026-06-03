@@ -3,6 +3,29 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
 
+function Logo({ dark = false }) {
+  return (
+    <div className="flex items-center gap-3">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect width="36" height="36" rx="8" fill={dark ? '#F5F0EB' : '#1A1410'} />
+        <path d="M10 10h6v6h-6zM10 20h6v6h-6zM20 10h6v6h-6z" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="22" y="22" width="4" height="4" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="20" y="20" width="2" height="2" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="24" y="20" width="2" height="2" fill={dark ? '#1A1410' : '#F5F0EB'} />
+        <rect x="20" y="24" width="2" height="2" fill={dark ? '#1A1410' : '#F5F0EB'} />
+      </svg>
+      <div>
+        <p className={`font-display text-lg font-bold uppercase tracking-widest-jp ${dark ? 'text-sumi' : 'text-washi'}`}>
+          QR RESTAURANTE
+        </p>
+        <p className={`font-sans text-[9px] tracking-widest-jp uppercase ${dark ? 'text-sumi/40' : 'text-washi/40'}`}>
+          Sistema de pedidos
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function LoginPage() {
   const { login }  = useAuth()
   const nav        = useNavigate()
@@ -31,41 +54,27 @@ export default function LoginPage() {
     <div className="min-h-screen bg-washi flex">
 
       <div className="hidden md:flex flex-col justify-between flex-1 px-14 py-12 bg-sumi">
-        {/* Logo */}
-        <div className="flex items-center gap-4">
-          <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-12 h-12 object-contain" />
-          <div>
-            <p className="font-display text-washi tracking-wider-jp text-lg font-bold uppercase">NAGOYA GARDEN</p>
-            <p className="font-sans text-washi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
-          </div>
-        </div>
+        <Logo dark={false} />
 
-        {/* Frase central */}
         <div>
           <h1 className="font-display text-washi text-4xl font-light leading-snug mb-6">
-            Sabor que<br /><span className="text-beni font-semibold">honra</span><br />a tradição.
+            Gerencie seu<br />restaurante com<br /><span className="text-beni font-semibold">simplicidade.</span>
           </h1>
           <p className="font-sans text-washi/40 text-xs leading-relaxed tracking-wide max-w-xs">
             Cardápio digital, gestão de pedidos em tempo real e relatórios por mesa — tudo em um só painel.
           </p>
         </div>
 
-        {/* Rodapé */}
         <p className="font-sans text-washi/20 text-[9px] tracking-widest-jp uppercase">
-          Sistema de gestão — Nagoya Garden
+          QR Restaurante — Sistema de gestão
         </p>
       </div>
 
       <div className="flex items-center justify-center w-full md:w-[440px] px-10 py-12 bg-washi flex-shrink-0">
         <div className="w-full max-w-sm">
 
-          {/* Logo mobile */}
           <div className="flex md:hidden items-center gap-3 mb-10">
-            <img src="/logo-nagoya.png" alt="Nagoya Garden" className="w-10 h-10 object-contain" />
-            <div>
-              <p className="font-display text-sumi tracking-wider-jp text-base font-bold uppercase">NAGOYA GARDEN</p>
-              <p className="font-sans text-sumi/40 text-[9px] tracking-widest-jp uppercase">Comida Japonesa</p>
-            </div>
+            <Logo dark={true} />
           </div>
 
           <h2 className="font-display text-sumi text-2xl font-light mb-1">Acesso ao painel</h2>
@@ -80,7 +89,7 @@ export default function LoginPage() {
                 type="email"
                 value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="admin@nagoyagarden.com.br"
+                placeholder="admin@seurestaurante.com.br"
                 autoComplete="email"
                 className="w-full bg-transparent border-0 border-b border-half border-washi-dark pb-2 font-sans text-sm text-sumi outline-none placeholder:text-washi-deep focus:border-sumi transition-colors"
               />
