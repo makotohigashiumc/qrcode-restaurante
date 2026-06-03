@@ -38,7 +38,6 @@ export default function App() {
         <Routes>
           <Route path="/"                              element={<CardapioPage />} />
           <Route path="/mesa/:numero/display"          element={<MesaDisplayPage />} />
-          <Route path="/cozinha"                       element={<CozinhaPage />} />
           <Route path="/politica-de-privacidade"       element={<PoliticaPrivacidadePage />} />
 
           <Route path="/admin/login"                   element={<LoginPage />} />
@@ -52,6 +51,7 @@ export default function App() {
             <Route path="cardapio"                     element={<CardapioAdminPage />} />
             <Route path="mesas"                        element={<MesasAdminPage />} />
             <Route path="pedidos"                      element={<PedidosAdminPage />} />
+            <Route path="cozinha"                      element={<CozinhaPage />} />
             <Route path="configuracao"                 element={<ConfiguracaoPage />} />
           </Route>
         </Routes>
