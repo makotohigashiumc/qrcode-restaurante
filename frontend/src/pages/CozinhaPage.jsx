@@ -67,10 +67,12 @@ function CardPedido({ pedido, onAtualizar }) {
 export default function CozinhaPage() {
   const [filtro, setFiltro] = useState('ativos')
 
+  const hoje = new Date().toISOString().slice(0, 10)
+
   const { data: pedidos = [], isError, error, refetch } = useQuery(
     ['pedidos-cozinha'],
-    // Busca todos os pedidos sem filtro de data para mostrar os ativos
-    () => api.get('/api/pedidos').then(r => r.data),
+    // Busca pedidos de hoje filtrando por data para não sobrecarregar
+    () => api.get(`/api/pedidos?data=${hoje}`).then(r => r.data),
     { refetchInterval: 20000 }
   )
 
