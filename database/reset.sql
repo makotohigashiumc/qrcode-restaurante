@@ -28,3 +28,10 @@ SET ultima_liberacao = NOW()
 WHERE restaurante_id = (
   SELECT id FROM restaurantes WHERE email = 'makotomatias3@gmail.com'
 );
+
+-- Apagar pedidos hoje
+DELETE FROM pedidos
+WHERE restaurante_id = (
+  SELECT id FROM restaurantes WHERE email = 'makotomatias3@gmail.com'
+)
+AND criado_em::date = CURRENT_DATE;

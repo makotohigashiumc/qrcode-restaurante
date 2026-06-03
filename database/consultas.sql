@@ -49,3 +49,25 @@ FROM pedidos
 WHERE restaurante_id = (
   SELECT id FROM restaurantes WHERE email = 'makotomatias3@gmail.com'
 );
+
+-- Gera QR code para mesas que estão sem QR code
+UPDATE mesas
+SET qr_code = 'https://qrcode-restaurante.vercel.app/?mesa=' || numero || '&restaurante=' || restaurante_id::text
+WHERE restaurante_id = (
+  SELECT id FROM restaurantes WHERE email = 'makotomatias3@gmail.com'
+)
+AND (qr_code IS NULL OR qr_code = '');
+
+
+SELECT numero, qr_code
+FROM mesas
+WHERE restaurante_id = (
+  SELECT id FROM restaurantes WHERE email = 'makotomatias3@gmail.com'
+)
+ORDER BY numero;
+
+
+UPDATE mesas SET ultima_liberacao = NOW()
+WHERE restaurante_id = (
+  SELECT id FROM restaurantes WHERE email = 'makotomatias3@gmail.com'
+);

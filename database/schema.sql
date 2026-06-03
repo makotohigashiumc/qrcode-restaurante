@@ -98,3 +98,7 @@ DROP TRIGGER IF EXISTS trg_pedidos_atualizado ON pedidos;
 CREATE TRIGGER trg_pedidos_atualizado
     BEFORE UPDATE ON pedidos
     FOR EACH ROW EXECUTE FUNCTION atualiza_timestamp();
+
+
+
+ALTER TABLE mesas ADD COLUMN IF NOT EXISTS token_qr VARCHAR(36);
