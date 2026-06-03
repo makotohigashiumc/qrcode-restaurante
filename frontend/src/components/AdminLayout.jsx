@@ -6,7 +6,7 @@ const NAV = [
   { path: '/admin/pedidos',      label: 'Pedidos'       },
   { path: '/admin/cardapio',     label: 'Cardápio'      },
   { path: '/admin/mesas',        label: 'Mesas'         },
-  { path: '/cozinha',            label: 'Cozinha'       },
+  { path: '/admin/cozinha',      label: 'Cozinha'       },
   { path: '/admin/configuracao', label: 'Configurações' },
 ]
 
