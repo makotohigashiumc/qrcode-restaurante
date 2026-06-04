@@ -71,7 +71,6 @@ export default function CozinhaPage() {
 
   const { data: pedidos = [], isError, error, refetch } = useQuery(
     ['pedidos-cozinha'],
-    // Busca pedidos de hoje filtrando por data para não sobrecarregar
     () => api.get(`/api/pedidos?data=${hoje}`).then(r => r.data),
     { refetchInterval: 20000 }
   )
@@ -164,7 +163,6 @@ export default function CozinhaPage() {
       <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {pedidosFiltrados.length === 0 ? (
           <div className="col-span-full text-center py-20 text-sumi/30">
-            <p className="text-4xl mb-3">🍽️</p>
             <p className="font-sans text-sm">Nenhum pedido no momento</p>
           </div>
         ) : (
