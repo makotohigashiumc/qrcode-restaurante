@@ -1,8 +1,7 @@
 import requests
 
-
 def buscar_cep(cep: str) -> dict | None:
-    """Consulta a API pública ViaCEP e retorna os dados do endereço."""
+    
     cep_limpo = "".join(filter(str.isdigit, cep))
     if len(cep_limpo) != 8:
         return None

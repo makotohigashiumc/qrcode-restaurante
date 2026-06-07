@@ -1,11 +1,6 @@
 from app.database import execute_query, execute_write
 
-
-# ---------- Categorias ----------
-
 def listar_categorias(restaurante_id: str):
-    # Dedup por nome (case/whitespace-insensitive) para evitar categorias duplicadas
-    # em ambientes dev (ex.: StrictMode do React pode disparar efeitos duas vezes).
     return execute_query(
         """
         SELECT *
@@ -19,7 +14,6 @@ def listar_categorias(restaurante_id: str):
         """,
         (restaurante_id,)
     )
-
 
 def buscar_categoria_por_nome(restaurante_id: str, nome: str):
     return execute_query(
@@ -35,13 +29,11 @@ def buscar_categoria_por_nome(restaurante_id: str, nome: str):
         fetchone=True,
     )
 
-
 def criar_categoria(restaurante_id, nome, ordem=0):
     return execute_write(
         "INSERT INTO categorias (restaurante_id, nome, ordem) VALUES (%s,%s,%s) RETURNING *",
         (restaurante_id, nome, ordem), returning=True
     )
-
 
 def atualizar_categoria(cat_id, restaurante_id, nome, ordem):
     return execute_write(
@@ -49,15 +41,11 @@ def atualizar_categoria(cat_id, restaurante_id, nome, ordem):
         (nome, ordem, cat_id, restaurante_id), returning=True
     )
 
-
 def deletar_categoria(cat_id, restaurante_id):
     execute_write(
         "DELETE FROM categorias WHERE id=%s AND restaurante_id=%s",
         (cat_id, restaurante_id)
     )
-
-
-# ---------- Itens ----------
 
 def listar_itens(restaurante_id: str, apenas_disponiveis=False):
     cond = "AND ic.disponivel = true" if apenas_disponiveis else ""
@@ -70,13 +58,11 @@ def listar_itens(restaurante_id: str, apenas_disponiveis=False):
         (restaurante_id,)
     )
 
-
 def buscar_item(item_id: str, restaurante_id: str):
     return execute_query(
         "SELECT * FROM itens_cardapio WHERE id=%s AND restaurante_id=%s",
         (item_id, restaurante_id), fetchone=True
     )
-
 
 def criar_item(restaurante_id, categoria_id, nome, descricao, preco, imagem_url, disponivel):
     return execute_write(
@@ -87,7 +73,6 @@ def criar_item(restaurante_id, categoria_id, nome, descricao, preco, imagem_url,
         returning=True
     )
 
-
 def atualizar_item(item_id, restaurante_id, categoria_id, nome, descricao, preco, imagem_url, disponivel):
     return execute_write(
         """UPDATE itens_cardapio
@@ -96,7 +81,6 @@ def atualizar_item(item_id, restaurante_id, categoria_id, nome, descricao, preco
         (categoria_id, nome, descricao, preco, imagem_url, disponivel, item_id, restaurante_id),
         returning=True
     )
-
 
 def deletar_item(item_id: str, restaurante_id: str):
     execute_write(

@@ -9,11 +9,9 @@ pedidos_bp = Blueprint("pedidos", __name__, url_prefix="/api/pedidos")
 
 _socketio = None
 
-
 def init_socketio(sio):
     global _socketio
     _socketio = sio
-
 
 @pedidos_bp.post("")
 def criar_pedido():
@@ -93,7 +91,6 @@ def criar_pedido():
 
     return jsonify(pedido_dict), 201
 
-
 @pedidos_bp.get("/<pedido_id>/publico")
 def consultar_pedido_publico(pedido_id):
     pedido = repo.buscar_por_id(pedido_id)
@@ -113,7 +110,6 @@ def consultar_pedido_publico(pedido_id):
             "preco_unitario": float(i["preco_unitario"]),
         } for i in itens],
     })
-
 
 @pedidos_bp.get("/mesa/<int:numero_mesa>/ativos")
 def pedidos_ativos_mesa(numero_mesa):
@@ -152,7 +148,6 @@ def pedidos_ativos_mesa(numero_mesa):
         "pedidos":          pedidos_sessao,
         "ultima_liberacao": ultima_lib.isoformat() if ultima_lib else None,
     })
-
 
 @pedidos_bp.get("")
 @requer_auth
@@ -199,7 +194,6 @@ def listar_pedidos():
         })
     return jsonify(resultado)
 
-
 @pedidos_bp.patch("/<pedido_id>/status")
 @requer_auth
 def atualizar_status(pedido_id):
@@ -217,7 +211,6 @@ def atualizar_status(pedido_id):
         _socketio.emit("status_atualizado", atualizado, room=str(request.restaurante_id))
     return jsonify(atualizado)
 
-
 @pedidos_bp.get("/mesa/<int:numero_mesa>/relatorio")
 @requer_auth
 def relatorio_mesa(numero_mesa):
@@ -234,13 +227,9 @@ def relatorio_mesa(numero_mesa):
             continue
         if p.get("status") == "cancelado":
             continue
-        # Mostra pedidos da ultima sessao encerrada (antes de ultima_liberacao)
-        # ou da sessao atual (se nao houver liberacao ainda)
         if ultima_lib and p.get("criado_em"):
-            # Pedido da sessao atual (apos ultima liberacao) — nao inclui no relatorio
             if p["criado_em"] > ultima_lib:
                 continue
-            # Pedido da sessao anterior — inclui apenas os mais recentes (do dia)
             from datetime import date
             if p["criado_em"].date() != ultima_lib.date():
                 continue
@@ -275,7 +264,6 @@ def relatorio_mesa(numero_mesa):
         "total_geral":  round(total_geral, 2),
         "sessao_desde": ultima_lib.isoformat() if ultima_lib else None,
     })
-
 
 @pedidos_bp.post("/mesa/<int:numero_mesa>/liberar")
 @requer_auth

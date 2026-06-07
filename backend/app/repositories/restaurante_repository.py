@@ -1,12 +1,10 @@
 from app.database import execute_query, execute_write
 
-
 def buscar_por_email(email: str):
     return execute_query(
         "SELECT * FROM restaurantes WHERE email = %s",
         (email,), fetchone=True
     )
-
 
 def buscar_por_id(rid: str):
     return execute_query(
@@ -14,7 +12,6 @@ def buscar_por_id(rid: str):
         "FROM restaurantes WHERE id = %s",
         (rid,), fetchone=True
     )
-
 
 def criar(nome, email, senha_hash, telefone, cep, cidade, estado, logradouro, bairro):
     return execute_write(
@@ -25,7 +22,6 @@ def criar(nome, email, senha_hash, telefone, cep, cidade, estado, logradouro, ba
         (nome, email, senha_hash, telefone, cep, cidade, estado, logradouro, bairro),
         returning=True
     )
-
 
 def atualizar(rid, nome, telefone, cep, cidade, estado, logradouro, bairro):
     return execute_write(

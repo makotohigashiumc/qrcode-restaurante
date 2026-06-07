@@ -7,8 +7,7 @@ Variáveis necessárias no .env:
 from flask_mail import Mail, Message
 from flask import current_app
 
-mail = Mail()  # Inicializar no app.py com: mail.init_app(app)
-
+mail = Mail()
 
 def enviar_verificacao(destinatario: str, nome: str, token: str):
     url = current_app.config.get("FRONTEND_URL", "http://localhost:5173")
@@ -24,7 +23,7 @@ def enviar_verificacao(destinatario: str, nome: str, token: str):
         <p style="color:#5A4535;font-size:14px;line-height:1.6;margin:0 0 24px">
           Olá, <strong>{nome}</strong>! Clique no botão para confirmar seu e-mail.
         </p>
-        <a href="{link}" style="display:inline-block;background:#C8855A;color:#fff;
+        <a href="{link}" style="display:inline-block;background:
            text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:500">
           Confirmar e-mail
         </a>
@@ -34,7 +33,6 @@ def enviar_verificacao(destinatario: str, nome: str, token: str):
       </div>
     </div>"""
     mail.send(msg)
-
 
 def enviar_recuperacao(destinatario: str, nome: str, token: str):
     url = current_app.config.get("FRONTEND_URL", "http://localhost:5173")
@@ -50,7 +48,7 @@ def enviar_recuperacao(destinatario: str, nome: str, token: str):
         <p style="color:#5A4535;font-size:14px;line-height:1.6;margin:0 0 24px">
           Olá, <strong>{nome}</strong>! Clique para redefinir sua senha.
         </p>
-        <a href="{link}" style="display:inline-block;background:#C8855A;color:#fff;
+        <a href="{link}" style="display:inline-block;background:
            text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:500">
           Redefinir senha
         </a>

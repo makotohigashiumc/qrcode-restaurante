@@ -16,7 +16,6 @@ const STATUS = {
 
 const hoje = new Date().toISOString().slice(0, 10)
 
-// Keep-alive para evitar que o Render adormeça
 function useKeepAlive() {
   useEffect(() => {
     const BACKEND = import.meta.env.VITE_API_URL || ''
@@ -47,7 +46,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-5xl mx-auto px-7 py-10">
 
-      {/* Cabeçalho */}
+      {}
       <div className="flex items-end justify-between mb-8 pb-5 border-b border-half border-washi-mid">
         <div>
           <h1 className="font-display text-sumi text-3xl font-light">
@@ -71,7 +70,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Métricas */}
+      {}
       <div className="grid grid-cols-4 border border-half border-washi-dark mb-10">
         {[
           { n: pedidos.length, label: 'Pedidos hoje', color: '' },
@@ -88,7 +87,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Últimos pedidos */}
+      {}
       <div>
         <div className="flex items-center gap-3 mb-4">
           <span className="text-beni text-sm">•</span>
@@ -109,7 +108,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div>
-            {/* Header */}
+            {}
             <div className="grid grid-cols-[48px_1fr_1.4fr_80px_100px] gap-4 py-2 border-b border-half border-washi-dark">
               {['Mesa', 'Cliente', 'Itens', 'Total', 'Status'].map(h => (
                 <span key={h} className="font-sans text-[8px] tracking-widest-jp uppercase text-sumi/40">{h}</span>

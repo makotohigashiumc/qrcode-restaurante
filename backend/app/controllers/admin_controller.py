@@ -10,15 +10,13 @@ from app.database import execute_write
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 
-
 def _enviar_email_bg(app, email, nome, token):
-    """Envia e-mail de verificação."""
+    
     with app.app_context():
         try:
             enviar_verificacao(email, nome, token)
         except Exception as e:
             app.logger.warning(f"Falha ao enviar e-mail de verificação: {e}")
-
 
 @admin_bp.post("/login")
 def login():
@@ -49,7 +47,6 @@ def login():
             "email": restaurante["email"],
         }
     })
-
 
 @admin_bp.post("/registro")
 def registro():
@@ -103,7 +100,6 @@ def registro():
         "email": email,
     }), 201
 
-
 @admin_bp.get("/me")
 @requer_auth
 def me():
@@ -111,7 +107,6 @@ def me():
     if not r:
         return jsonify({"erro": "Restaurante não encontrado"}), 404
     return jsonify(dict(r))
-
 
 @admin_bp.put("/restaurante")
 @requer_auth

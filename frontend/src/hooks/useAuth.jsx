@@ -33,9 +33,9 @@ export function AuthProvider({ children }) {
       api.get('/api/admin/me')
         .then(res => setUser(res.data))
         .catch((err) => {
-          // Só considerar deslogado se o token for inválido/expirado.
-          // Se o banco estiver indisponível (503) ou houver erro de rede,
-          // mantém o token e usa os dados mínimos do JWT para não “deslogar sozinho”.
+          
+          
+          
           if (err?.response?.status === 401) {
             localStorage.removeItem('token')
             setUser(null)

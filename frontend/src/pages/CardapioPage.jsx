@@ -138,7 +138,7 @@ export default function CardapioPage() {
   const [acordando, setAcordando]         = useState(false)
   const [tokenInvalido, setTokenInvalido] = useState(false)
 
-  // Valida o token do QR Code ao carregar
+  
   useQuery(
     ['verificar-mesa', mesa, restauranteId, tokenUrl],
     () => api.get(`/api/mesas/verificar?restaurante=${restauranteId}&numero=${mesa}&token=${tokenUrl}`).then(r => r.data),

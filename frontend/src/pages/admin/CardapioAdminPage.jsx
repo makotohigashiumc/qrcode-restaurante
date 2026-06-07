@@ -51,7 +51,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
 
         <div className="grid grid-cols-2 gap-3">
 
-          {/* Nome */}
+          {}
           <div className="col-span-2">
             <label className="block text-[10px] font-medium uppercase tracking-widest text-sumi/50 mb-1.5">Nome *</label>
             <input
@@ -61,7 +61,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
             />
           </div>
 
-          {/* Descrição */}
+          {}
           <div className="col-span-2">
             <label className="block text-[10px] font-medium uppercase tracking-widest text-sumi/50 mb-1.5">Descrição</label>
             <textarea
@@ -72,7 +72,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
             />
           </div>
 
-          {/* Preço */}
+          {}
           <div>
             <label className="block text-[10px] font-medium uppercase tracking-widest text-sumi/50 mb-1.5">Preço (R$) *</label>
             <input
@@ -84,7 +84,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
             />
           </div>
 
-          {/* Categoria */}
+          {}
           <div>
             <label className="block text-[10px] font-medium uppercase tracking-widest text-sumi/50 mb-1.5">Categoria</label>
             <select
@@ -97,11 +97,11 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
             </select>
           </div>
 
-          {/* Imagem — URL ou arquivo */}
+          {}
           <div className="col-span-2">
             <label className="block text-[10px] font-medium uppercase tracking-widest text-sumi/50 mb-1.5">Imagem</label>
 
-            {/* Preview */}
+            {}
             {form.imagem_url && (
               <div className="mb-2 flex items-center gap-3">
                 <img
@@ -120,7 +120,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
               </div>
             )}
 
-            {/* URL */}
+            {}
             <input
               value={form.imagem_url}
               onChange={e => set('imagem_url', e.target.value)}
@@ -128,7 +128,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
               className="w-full border border-washi-dark rounded-lg px-3 py-2.5 text-[13px] text-sumi focus:outline-none focus:ring-2 focus:ring-beni mb-2"
             />
 
-            {/* Upload arquivo */}
+            {}
             <div className="relative">
               <label className={`flex items-center justify-center gap-2 w-full border border-dashed border-washi-dark rounded-lg px-3 py-3 text-[12px] cursor-pointer transition-colors
                 ${enviandoImg ? 'opacity-50 cursor-not-allowed' : 'hover:border-beni hover:bg-washi'}`}>
@@ -149,7 +149,7 @@ function Modal({ item, categorias, onSalvar, onFechar }) {
             </div>
           </div>
 
-          {/* Disponível */}
+          {}
           <div className="col-span-2 flex items-center gap-2.5">
             <input
               type="checkbox"

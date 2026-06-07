@@ -1,6 +1,5 @@
 from app.database import execute_query, execute_write
 
-
 def criar_pedido(mesa_id, restaurante_id, nome_cliente, total):
     return execute_write(
         """INSERT INTO pedidos (mesa_id, restaurante_id, nome_cliente, total)
@@ -9,7 +8,6 @@ def criar_pedido(mesa_id, restaurante_id, nome_cliente, total):
         returning=True
     )
 
-
 def criar_item_pedido(pedido_id, item_cardapio_id, quantidade, preco_unitario, observacao):
     return execute_write(
         """INSERT INTO itens_pedido (pedido_id, item_cardapio_id, quantidade, preco_unitario, observacao)
@@ -17,7 +15,6 @@ def criar_item_pedido(pedido_id, item_cardapio_id, quantidade, preco_unitario, o
         (pedido_id, item_cardapio_id, quantidade, preco_unitario, observacao),
         returning=True
     )
-
 
 def listar_por_restaurante(restaurante_id: str, status: str = None):
     cond = "AND p.status = %s" if status else ""
@@ -31,7 +28,6 @@ def listar_por_restaurante(restaurante_id: str, status: str = None):
         params
     )
 
-
 def buscar_por_id(pedido_id: str):
     return execute_query(
         """SELECT p.*, m.numero AS mesa_numero
@@ -41,7 +37,6 @@ def buscar_por_id(pedido_id: str):
         (pedido_id,), fetchone=True
     )
 
-
 def buscar_itens_do_pedido(pedido_id: str):
     return execute_query(
         """SELECT ip.*, ic.nome AS item_nome, ic.imagem_url
@@ -50,7 +45,6 @@ def buscar_itens_do_pedido(pedido_id: str):
            WHERE ip.pedido_id = %s""",
         (pedido_id,)
     )
-
 
 def atualizar_status(pedido_id: str, restaurante_id: str, novo_status: str):
     return execute_write(

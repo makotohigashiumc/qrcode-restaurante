@@ -67,7 +67,7 @@ export default function MesasAdminPage() {
         </div>
       )}
 
-      {/* Adicionar mesa */}
+      {}
       <div className="border border-half border-washi-dark p-5 mb-8 flex items-end gap-4">
         <div className="flex-1">
           <label className="block font-sans text-[9px] tracking-widest-jp uppercase text-sumi/50 mb-2">
@@ -90,7 +90,7 @@ export default function MesasAdminPage() {
         </button>
       </div>
 
-      {/* Grid mesas */}
+      {}
       {isLoading ? (
         <div className="flex justify-center py-20">
           <div className="w-7 h-7 rounded-full border-2 border-sumi border-t-transparent animate-spin" />
@@ -141,7 +141,7 @@ export default function MesasAdminPage() {
         </div>
       )}
 
-      {/* Modal QR */}
+      {}
       {qrModal && (
         <div className="fixed inset-0 bg-sumi/70 z-50 flex items-center justify-center p-4" onClick={() => setQrModal(null)}>
           <div className="bg-washi border border-half border-washi-dark p-8 text-center max-w-xs w-full" onClick={e => e.stopPropagation()}>

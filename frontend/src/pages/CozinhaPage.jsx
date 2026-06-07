@@ -75,7 +75,7 @@ export default function CozinhaPage() {
     { refetchInterval: 20000 }
   )
 
-  // WebSocket para receber pedidos em tempo real
+  
   useEffect(() => {
     const token = localStorage.getItem('token') || ''
     const s = io(API_URL, { transports: ['polling'] })
@@ -103,7 +103,7 @@ export default function CozinhaPage() {
     }
   }
 
-  // Filtra só pedidos da sessão ativa
+  
   const pedidosFiltrados = pedidos
     .filter(p => p.sessao_ativa !== false)
     .filter(p => {
@@ -121,14 +121,14 @@ export default function CozinhaPage() {
   return (
     <div className="min-h-screen bg-washi">
 
-      {/* Barra de contadores */}
+      {}
       <div className="bg-sumi px-6 py-3 flex gap-6 text-sm">
         <span className="text-blue-300">Recebidos: <strong>{counts.recebido}</strong></span>
         <span className="text-yellow-300">Em Preparo: <strong>{counts.em_preparo}</strong></span>
         <span className="text-green-300">Prontos: <strong>{counts.pronto}</strong></span>
       </div>
 
-      {/* Filtros */}
+      {}
       <div className="px-6 py-4 flex gap-2 border-b border-washi-dark bg-white">
         {[
           { key: 'ativos',  label: `Ativos (${counts.recebido + counts.em_preparo + counts.pronto})` },
@@ -159,7 +159,7 @@ export default function CozinhaPage() {
         </div>
       )}
 
-      {/* Grid de pedidos */}
+      {}
       <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {pedidosFiltrados.length === 0 ? (
           <div className="col-span-full text-center py-20 text-sumi/30">

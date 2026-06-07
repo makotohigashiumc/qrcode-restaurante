@@ -16,17 +16,14 @@ JWT_SECRET    = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 JWT_ALGO      = "HS256"
 JWT_EXP_HOURS = 8
 
-
 def hash_senha(senha: str) -> str:
     return bcrypt.hashpw(senha.encode(), bcrypt.gensalt(12)).decode()
-
 
 def verificar_senha(senha: str, hashed: str) -> bool:
     try:
         return bcrypt.checkpw(senha.encode(), hashed.encode())
     except Exception:
         return False
-
 
 def gerar_token(restaurante_id: str, email: str) -> str:
     payload = {
@@ -37,10 +34,8 @@ def gerar_token(restaurante_id: str, email: str) -> str:
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
-
 def decodificar_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-
 
 def requer_auth(f):
     @wraps(f)
@@ -60,13 +55,11 @@ def requer_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-
 def _gerar_token_url() -> str:
     return secrets.token_urlsafe(32)
 
-
 def _enviar_bg(app, fn, *args):
-    """Envia e-mail de forma assíncrona."""
+    
     def run():
         with app.app_context():
             try:
@@ -76,8 +69,6 @@ def _enviar_bg(app, fn, *args):
     t = threading.Thread(target=run)
     t.daemon = True
     t.start()
-
-
 
 @auth_rf_bp.route("/api/verificar-email/<token>", methods=["GET"])
 def verificar_email(token: str):
@@ -97,8 +88,6 @@ def verificar_email(token: str):
         (row["id"],)
     )
     return jsonify({"mensagem": "E-mail confirmado! Faça login."}), 200
-
-
 
 @auth_rf_bp.route("/api/reenviar-verificacao", methods=["POST"])
 def reenviar_verificacao():
@@ -126,8 +115,6 @@ def reenviar_verificacao():
     _enviar_bg(app, enviar_verificacao, email, row["nome"], token)
 
     return jsonify(RESP), 200
-
-
 
 @auth_rf_bp.route("/api/esqueci-senha", methods=["POST"])
 def esqueci_senha():
@@ -161,8 +148,6 @@ def esqueci_senha():
 
     return jsonify(RESP), 200
 
-
-
 @auth_rf_bp.route("/api/validar-token-recuperacao/<token>", methods=["GET"])
 def validar_token_recuperacao(token: str):
     row = execute_query(
@@ -174,8 +159,6 @@ def validar_token_recuperacao(token: str):
     if row["expira_em"] < datetime.now(timezone.utc):
         return jsonify({"valido": False, "erro": "Token expirado."}), 410
     return jsonify({"valido": True}), 200
-
-
 
 @auth_rf_bp.route("/api/nova-senha", methods=["POST"])
 def nova_senha():
